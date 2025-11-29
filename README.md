@@ -27,27 +27,51 @@ The council uses [OpenRouter](https://openrouter.ai/) to access multiple LLMs:
 2. Add credits or enable auto-top-up
 3. Get your API key from the dashboard
 
-### 2. Configure Your Environment
+### 2. Configure Environment Variables
 
-Create a `.env` file or export the environment variable:
+Set your OpenRouter API key:
 
 ```bash
 export OPENROUTER_API_KEY="sk-or-v1-..."
 ```
 
-### 3. Configure Models (Optional)
+### 3. Customize Models (Optional)
 
-By default, the council uses GPT, Gemini, Claude, and Grok. To customize, edit `~/.config/llm-council/config.py`:
+You can customize which models participate in the council using three methods (in priority order):
 
-```python
-COUNCIL_MODELS = [
-    "openai/gpt-4",
+#### Option 1: Environment Variables (Recommended)
+
+```bash
+# Comma-separated list of council models
+export LLM_COUNCIL_MODELS="openai/gpt-4,anthropic/claude-3-opus,google/gemini-pro"
+
+# Chairman model (synthesizes final response)
+export LLM_COUNCIL_CHAIRMAN="anthropic/claude-3-opus"
+```
+
+#### Option 2: Configuration File
+
+Create `~/.config/llm-council/config.json`:
+
+```json
+{
+  "council_models": [
+    "openai/gpt-4-turbo",
     "anthropic/claude-3-opus",
     "google/gemini-pro",
-]
-
-CHAIRMAN_MODEL = "anthropic/claude-3-opus"
+    "meta-llama/llama-3-70b-instruct"
+  ],
+  "chairman_model": "anthropic/claude-3-opus"
+}
 ```
+
+#### Option 3: Use Defaults
+
+If you don't configure anything, these defaults are used:
+- Council: GPT-4, Gemini Pro, Claude 3 Sonnet, Grok Beta
+- Chairman: Claude 3 Sonnet
+
+**Finding Models**: Browse available models at [openrouter.ai/models](https://openrouter.ai/models)
 
 ## Usage
 
