@@ -9,7 +9,8 @@ from llm_council_mcp.config import OPENROUTER_API_KEY, OPENROUTER_API_URL
 async def query_model(
     model: str,
     messages: List[Dict[str, str]],
-    timeout: float = 120.0
+    timeout: float = 120.0,
+    disable_tools: bool = False
 ) -> Optional[Dict[str, Any]]:
     """
     Query a single model via OpenRouter API.
@@ -18,9 +19,10 @@ async def query_model(
         model: OpenRouter model identifier (e.g., "openai/gpt-4o")
         messages: List of message dicts with 'role' and 'content'
         timeout: Request timeout in seconds
+        disable_tools: If True, explicitly disable tool/function calling
 
     Returns:
-        Response dict with 'content' and optional 'reasoning_details', or None if failed
+        Response dict with 'content', optional 'reasoning_details', and 'usage', or None if failed
     """
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
@@ -31,6 +33,11 @@ async def query_model(
         "model": model,
         "messages": messages,
     }
+
+    # Disable tools to prevent prompt injection via tool invocation
+    if disable_tools:
+        payload["tools"] = []
+        payload["tool_choice"] = "none"
 
     try:
         async with httpx.AsyncClient(timeout=timeout) as client:
@@ -43,10 +50,16 @@ async def query_model(
 
             data = response.json()
             message = data['choices'][0]['message']
+            usage = data.get('usage', {})
 
             return {
                 'content': message.get('content'),
-                'reasoning_details': message.get('reasoning_details')
+                'reasoning_details': message.get('reasoning_details'),
+                'usage': {
+                    'prompt_tokens': usage.get('prompt_tokens', 0),
+                    'completion_tokens': usage.get('completion_tokens', 0),
+                    'total_tokens': usage.get('total_tokens', 0)
+                }
             }
 
     except Exception as e:
@@ -56,7 +69,8 @@ async def query_model(
 
 async def query_models_parallel(
     models: List[str],
-    messages: List[Dict[str, str]]
+    messages: List[Dict[str, str]],
+    disable_tools: bool = False
 ) -> Dict[str, Optional[Dict[str, Any]]]:
     """
     Query multiple models in parallel.
@@ -64,14 +78,13 @@ async def query_models_parallel(
     Args:
         models: List of OpenRouter model identifiers
         messages: List of message dicts to send to each model
+        disable_tools: If True, disable tool/function calling for all queries
 
     Returns:
         Dict mapping model identifier to response dict (or None if failed)
     """
-    import asyncio
-
     # Create tasks for all models
-    tasks = [query_model(model, messages) for model in models]
+    tasks = [query_model(model, messages, disable_tools=disable_tools) for model in models]
 
     # Wait for all to complete
     responses = await asyncio.gather(*tasks)

@@ -5,6 +5,48 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2024-11-29
+
+### Added
+
+- **Cost Transparency**: Token usage tracking across all pipeline stages
+  - Per-stage breakdown (Stage 1, 1.5, 2, 3)
+  - Grand total tokens (prompt, completion, total)
+  - Included in response metadata for cost monitoring
+
+- **Borda Count Ranking**: More robust ranking aggregation
+  - 1st place = (N-1) points, 2nd = (N-2), ..., last = 0 points
+  - Uses relative rankings (which LLMs are good at) instead of absolute scores
+  - Scores still tracked as secondary signal
+
+- **Small Council Handling**: Graceful degradation for N ≤ 2
+  - Single model (N=1): Skip Stage 2 peer review entirely
+  - Two models (N=2): Proceed but mark rankings as "degraded" (single vote each)
+  - Clear warnings in metadata for transparency
+
+- **Reviewer Refusal Detection**: Handle safety refusals gracefully
+  - Detects common refusal patterns ("I cannot evaluate", "I must decline", etc.)
+  - Marks abstained reviewers in metadata with reason
+  - Abstentions excluded from ranking aggregation
+
+- **HTML Escaping for XML Defense**: Enhanced prompt injection protection
+  - Response content HTML-escaped within XML tags
+  - Prevents injection via HTML/XML special characters
+
+- **Tool Calling Disabled**: Stage 2/3 now explicitly disable tool calling
+  - Prevents prompt injection via tool invocation
+  - Uses OpenRouter's `tools: []` and `tool_choice: "none"` options
+
+### Changed
+
+- All stage functions now return usage data alongside results
+- Metadata structure updated to include `usage.by_stage` and `usage.total`
+
+### Fixed
+
+- Aggregate rankings now use Borda Count for more stable results
+- Reviewer abstentions no longer corrupt ranking calculations
+
 ## [0.2.0] - 2024-11-29
 
 ### Added

@@ -1,5 +1,6 @@
 """3-stage LLM Council orchestration."""
 
+import html
 import random
 from typing import List, Dict, Any, Tuple, Optional
 from llm_council_mcp.openrouter import query_models_parallel, query_model
@@ -15,7 +16,7 @@ from llm_council_mcp.config import (
 
 
 
-async def stage1_collect_responses(user_query: str) -> List[Dict[str, Any]]:
+async def stage1_collect_responses(user_query: str) -> Tuple[List[Dict[str, Any]], Dict[str, int]]:
     """
     Stage 1: Collect individual responses from all council models.
 
@@ -23,28 +24,35 @@ async def stage1_collect_responses(user_query: str) -> List[Dict[str, Any]]:
         user_query: The user's question
 
     Returns:
-        List of dicts with 'model' and 'response' keys
+        Tuple of (results list, usage dict with token counts)
     """
     messages = [{"role": "user", "content": user_query}]
 
     # Query all models in parallel
     responses = await query_models_parallel(COUNCIL_MODELS, messages)
 
-    # Format results
+    # Format results and aggregate usage
     stage1_results = []
+    total_usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+
     for model, response in responses.items():
         if response is not None:  # Only include successful responses
             stage1_results.append({
                 "model": model,
                 "response": response.get('content', '')
             })
+            # Aggregate usage
+            usage = response.get('usage', {})
+            total_usage["prompt_tokens"] += usage.get('prompt_tokens', 0)
+            total_usage["completion_tokens"] += usage.get('completion_tokens', 0)
+            total_usage["total_tokens"] += usage.get('total_tokens', 0)
 
-    return stage1_results
+    return stage1_results, total_usage
 
 
 async def stage1_5_normalize_styles(
     stage1_results: List[Dict[str, Any]]
-) -> List[Dict[str, Any]]:
+) -> Tuple[List[Dict[str, Any]], Dict[str, int]]:
     """
     Stage 1.5: Normalize response styles to reduce stylistic fingerprinting.
 
@@ -56,10 +64,12 @@ async def stage1_5_normalize_styles(
         stage1_results: Results from Stage 1
 
     Returns:
-        List of dicts with 'model', 'response' (normalized), and 'original_response'
+        Tuple of (normalized results, usage dict with token counts)
     """
+    total_usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+
     if not STYLE_NORMALIZATION:
-        return stage1_results
+        return stage1_results, total_usage
 
     normalized_results = []
 
@@ -88,6 +98,11 @@ Rewritten text:"""
                 "response": response.get('content', result['response']),
                 "original_response": result['response']
             })
+            # Aggregate usage
+            usage = response.get('usage', {})
+            total_usage["prompt_tokens"] += usage.get('prompt_tokens', 0)
+            total_usage["completion_tokens"] += usage.get('completion_tokens', 0)
+            total_usage["total_tokens"] += usage.get('total_tokens', 0)
         else:
             # If normalization fails, use original
             normalized_results.append({
@@ -96,13 +111,13 @@ Rewritten text:"""
                 "original_response": result['response']
             })
 
-    return normalized_results
+    return normalized_results, total_usage
 
 
 async def stage2_collect_rankings(
     user_query: str,
     stage1_results: List[Dict[str, Any]]
-) -> Tuple[List[Dict[str, Any]], Dict[str, str]]:
+) -> Tuple[List[Dict[str, Any]], Dict[str, str], Dict[str, int]]:
     """
     Stage 2: Each model ranks the anonymized responses.
 
@@ -114,7 +129,7 @@ async def stage2_collect_rankings(
         stage1_results: Results from Stage 1
 
     Returns:
-        Tuple of (rankings list, label_to_model mapping)
+        Tuple of (rankings list, label_to_model mapping, usage dict)
     """
     # Randomize response order to prevent position bias
     shuffled_results = stage1_results.copy()
@@ -131,7 +146,7 @@ async def stage2_collect_rankings(
 
     # Build the ranking prompt with XML delimiters for prompt injection defense
     responses_text = "\n\n".join([
-        f"<candidate_response id=\"{label}\">\n{result['response']}\n</candidate_response>"
+        f"<candidate_response id=\"{label}\">\n{html.escape(result['response'])}\n</candidate_response>"
         for label, result in zip(labels, shuffled_results)
     ])
 
@@ -185,10 +200,13 @@ Now provide your evaluation and ranking:"""
         reviewers = random.sample(COUNCIL_MODELS, MAX_REVIEWERS)
 
     # Get rankings from reviewer models in parallel
-    responses = await query_models_parallel(reviewers, messages)
+    # Disable tools to prevent prompt injection via tool invocation
+    responses = await query_models_parallel(reviewers, messages, disable_tools=True)
 
-    # Format results - include reviewer model for self-vote exclusion
+    # Format results and aggregate usage - include reviewer model for self-vote exclusion
     stage2_results = []
+    total_usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+
     for model, response in responses.items():
         if response is not None:
             full_text = response.get('content', '')
@@ -198,8 +216,13 @@ Now provide your evaluation and ranking:"""
                 "ranking": full_text,
                 "parsed_ranking": parsed
             })
+            # Aggregate usage
+            usage = response.get('usage', {})
+            total_usage["prompt_tokens"] += usage.get('prompt_tokens', 0)
+            total_usage["completion_tokens"] += usage.get('completion_tokens', 0)
+            total_usage["total_tokens"] += usage.get('total_tokens', 0)
 
-    return stage2_results, label_to_model
+    return stage2_results, label_to_model, total_usage
 
 
 async def stage3_synthesize_final(
@@ -207,7 +230,7 @@ async def stage3_synthesize_final(
     stage1_results: List[Dict[str, Any]],
     stage2_results: List[Dict[str, Any]],
     aggregate_rankings: Optional[List[Dict[str, Any]]] = None
-) -> Dict[str, Any]:
+) -> Tuple[Dict[str, Any], Dict[str, int]]:
     """
     Stage 3: Chairman synthesizes final response.
 
@@ -222,7 +245,7 @@ async def stage3_synthesize_final(
         aggregate_rankings: Optional aggregate rankings for context
 
     Returns:
-        Dict with 'model' and 'response' keys
+        Tuple of (result dict with 'model' and 'response', usage dict)
     """
     # Build comprehensive context for chairman
     stage1_text = "\n\n".join([
@@ -277,35 +300,70 @@ STAGE 2 - Peer Rankings:
     messages = [{"role": "user", "content": chairman_prompt}]
 
     # Query the chairman model
-    response = await query_model(CHAIRMAN_MODEL, messages)
+    # Disable tools to prevent prompt injection via tool invocation
+    response = await query_model(CHAIRMAN_MODEL, messages, disable_tools=True)
+
+    total_usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
 
     if response is None:
         # Fallback if chairman fails
         return {
             "model": CHAIRMAN_MODEL,
             "response": "Error: Unable to generate final synthesis."
-        }
+        }, total_usage
+
+    # Capture usage
+    usage = response.get('usage', {})
+    total_usage["prompt_tokens"] = usage.get('prompt_tokens', 0)
+    total_usage["completion_tokens"] = usage.get('completion_tokens', 0)
+    total_usage["total_tokens"] = usage.get('total_tokens', 0)
 
     return {
         "model": CHAIRMAN_MODEL,
         "response": response.get('content', '')
-    }
+    }, total_usage
 
 
 def parse_ranking_from_text(ranking_text: str) -> Dict[str, Any]:
     """
     Parse the ranking JSON from the model's response.
 
+    Handles:
+    - Normal JSON rankings
+    - Legacy "FINAL RANKING:" format
+    - Safety refusals (marks as abstained)
+    - Parse failures (marks as abstained)
+
     Args:
         ranking_text: The full text response from the model
 
     Returns:
-        Dict with 'ranking' (list) and 'scores' (dict) keys
+        Dict with 'ranking' (list), 'scores' (dict), and optionally 'abstained' (bool)
     """
     import re
     import json
 
     result = {"ranking": [], "scores": {}}
+
+    # Check for safety refusals or inability to evaluate
+    refusal_patterns = [
+        r"I cannot evaluate",
+        r"I'm not able to (rank|evaluate|assess)",
+        r"I don't feel comfortable",
+        r"I must decline",
+        r"I can't provide a ranking",
+        r"I'm unable to rank",
+        r"I cannot compare",
+        r"I won't be able to",
+        r"I apologize,? but I cannot",
+    ]
+
+    ranking_text_lower = ranking_text.lower()
+    for pattern in refusal_patterns:
+        if re.search(pattern, ranking_text_lower):
+            result["abstained"] = True
+            result["abstention_reason"] = "Safety refusal detected"
+            return result
 
     # Try to extract JSON block from markdown code fence
     json_match = re.search(r'```json\s*([\s\S]*?)\s*```', ranking_text)
@@ -370,7 +428,16 @@ def calculate_aggregate_rankings(
     label_to_model: Dict[str, str]
 ) -> List[Dict[str, Any]]:
     """
-    Calculate aggregate rankings across all models.
+    Calculate aggregate rankings using Borda Count method.
+
+    Borda Count assigns points based on ranking position:
+    - 1st place = (N-1) points
+    - 2nd place = (N-2) points
+    - Last place = 0 points
+
+    This is more robust than averaging raw scores because it uses
+    relative rankings (which LLMs are better at) rather than absolute
+    scores (which are poorly calibrated across models).
 
     When EXCLUDE_SELF_VOTES is True, excludes votes where the reviewer
     is evaluating their own response (prevents self-preference bias).
@@ -380,23 +447,30 @@ def calculate_aggregate_rankings(
         label_to_model: Mapping from anonymous labels to model names
 
     Returns:
-        List of dicts with model name, average rank, average score, sorted best to worst
+        List of dicts with model name, Borda score, sorted best to worst
     """
     from collections import defaultdict
 
-    # Track positions and scores for each model
+    num_candidates = len(label_to_model)
+
+    # Track Borda points and raw scores for each model
+    model_borda_points = defaultdict(list)
+    model_raw_scores = defaultdict(list)
     model_positions = defaultdict(list)
-    model_scores = defaultdict(list)
     self_votes_excluded = 0
 
     for ranking in stage2_results:
-        reviewer_model = ranking.get('model', '')  # The model that did the reviewing
+        reviewer_model = ranking.get('model', '')
         parsed = ranking.get('parsed_ranking', {})
         ranking_list = parsed.get('ranking', [])
         scores = parsed.get('scores', {})
 
-        # Record positions (1-indexed)
-        for position, label in enumerate(ranking_list, start=1):
+        # Skip if this ranking was marked as abstained
+        if parsed.get('abstained'):
+            continue
+
+        # Calculate Borda points from ranking positions
+        for position, label in enumerate(ranking_list):
             if label in label_to_model:
                 author_model = label_to_model[label]
 
@@ -405,38 +479,42 @@ def calculate_aggregate_rankings(
                     self_votes_excluded += 1
                     continue
 
-                model_positions[author_model].append(position)
+                # Borda points: 1st place = (N-1), 2nd = (N-2), last = 0
+                borda_points = (num_candidates - 1) - position
+                model_borda_points[author_model].append(borda_points)
+                model_positions[author_model].append(position + 1)  # 1-indexed for display
 
-        # Record scores
+        # Also track raw scores (as secondary signal)
         for label, score in scores.items():
             if label in label_to_model:
                 author_model = label_to_model[label]
 
-                # Exclude self-votes if configured
                 if EXCLUDE_SELF_VOTES and reviewer_model == author_model:
                     continue
 
-                model_scores[author_model].append(score)
+                model_raw_scores[author_model].append(score)
 
     # Calculate aggregates for each model
     aggregate = []
-    all_models = set(model_positions.keys()) | set(model_scores.keys())
+    all_models = set(model_borda_points.keys()) | set(model_raw_scores.keys())
 
     for model in all_models:
+        borda_points = model_borda_points.get(model, [])
+        raw_scores = model_raw_scores.get(model, [])
         positions = model_positions.get(model, [])
-        scores = model_scores.get(model, [])
 
         entry = {
             "model": model,
+            "borda_score": round(sum(borda_points) / len(borda_points), 2) if borda_points else None,
             "average_position": round(sum(positions) / len(positions), 2) if positions else None,
-            "average_score": round(sum(scores) / len(scores), 2) if scores else None,
-            "vote_count": len(positions),
+            "average_score": round(sum(raw_scores) / len(raw_scores), 2) if raw_scores else None,
+            "vote_count": len(borda_points),
             "self_votes_excluded": EXCLUDE_SELF_VOTES
         }
         aggregate.append(entry)
 
-    # Sort by average score (higher is better), then by average position (lower is better)
-    aggregate.sort(key=lambda x: (-(x['average_score'] or 0), x['average_position'] or 999))
+    # Sort by Borda score (higher is better), then by raw score as tiebreaker
+    aggregate.sort(key=lambda x: (-(x['borda_score'] or -999), -(x['average_score'] or 0)))
 
     # Add rank numbers
     for i, entry in enumerate(aggregate, start=1):
@@ -499,32 +577,88 @@ async def run_full_council(user_query: str) -> Tuple[List, List, Dict, Dict]:
     Returns:
         Tuple of (stage1_results, stage2_results, stage3_result, metadata)
     """
+    # Initialize usage tracking
+    total_usage = {
+        "stage1": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
+        "stage1_5": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
+        "stage2": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
+        "stage3": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
+    }
+
     # Stage 1: Collect individual responses
-    stage1_results = await stage1_collect_responses(user_query)
+    stage1_results, stage1_usage = await stage1_collect_responses(user_query)
+    total_usage["stage1"] = stage1_usage
+    num_responses = len(stage1_results)
 
     # If no models responded successfully, return error
-    if not stage1_results:
+    if num_responses == 0:
         return [], [], {
             "model": "error",
             "response": "All models failed to respond. Please try again."
-        }, {}
+        }, {"usage": total_usage}
 
-    # Stage 1.5 (optional): Normalize response styles
-    responses_for_review = await stage1_5_normalize_styles(stage1_results)
+    # Handle small councils (N ≤ 2) - peer review is unstable or meaningless
+    degraded_mode = None
+    stage2_usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+    stage1_5_usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
 
-    # Stage 2: Collect rankings (uses normalized responses if enabled)
-    stage2_results, label_to_model = await stage2_collect_rankings(user_query, responses_for_review)
+    if num_responses == 1:
+        # Single model: skip peer review entirely
+        degraded_mode = "single_model"
+        stage2_results = []
+        label_to_model = {"Response A": stage1_results[0]['model']}
+        aggregate_rankings = [{
+            "model": stage1_results[0]['model'],
+            "rank": 1,
+            "average_score": None,
+            "average_position": None,
+            "vote_count": 0,
+            "note": "Single model - no peer review"
+        }]
+    elif num_responses == 2:
+        # Two models: peer review gives only 1 vote each (unstable)
+        # Proceed but mark as degraded
+        degraded_mode = "two_models"
+        responses_for_review, stage1_5_usage = await stage1_5_normalize_styles(stage1_results)
+        stage2_results, label_to_model, stage2_usage = await stage2_collect_rankings(user_query, responses_for_review)
+        aggregate_rankings = calculate_aggregate_rankings(stage2_results, label_to_model)
+        # Add warning to each ranking
+        for r in aggregate_rankings:
+            r['note'] = "Two-model council - rankings based on single vote"
+    else:
+        # Normal flow (N ≥ 3)
+        responses_for_review, stage1_5_usage = await stage1_5_normalize_styles(stage1_results)
+        stage2_results, label_to_model, stage2_usage = await stage2_collect_rankings(user_query, responses_for_review)
+        aggregate_rankings = calculate_aggregate_rankings(stage2_results, label_to_model)
 
-    # Calculate aggregate rankings (with self-vote exclusion if configured)
-    aggregate_rankings = calculate_aggregate_rankings(stage2_results, label_to_model)
+    total_usage["stage1_5"] = stage1_5_usage
+    total_usage["stage2"] = stage2_usage
 
     # Stage 3: Synthesize final answer (with mode support)
-    stage3_result = await stage3_synthesize_final(
+    stage3_result, stage3_usage = await stage3_synthesize_final(
         user_query,
         stage1_results,  # Use original responses for synthesis context
         stage2_results,
         aggregate_rankings
     )
+    total_usage["stage3"] = stage3_usage
+
+    # Calculate grand total
+    grand_total = {
+        "prompt_tokens": sum(s["prompt_tokens"] for s in total_usage.values()),
+        "completion_tokens": sum(s["completion_tokens"] for s in total_usage.values()),
+        "total_tokens": sum(s["total_tokens"] for s in total_usage.values()),
+    }
+
+    # Collect abstention info from Stage 2
+    abstentions = []
+    for r in stage2_results:
+        parsed = r.get('parsed_ranking', {})
+        if parsed.get('abstained'):
+            abstentions.append({
+                "model": r['model'],
+                "reason": parsed.get('abstention_reason', 'Unknown')
+            })
 
     # Prepare metadata with configuration info
     metadata = {
@@ -536,8 +670,21 @@ async def run_full_council(user_query: str) -> Tuple[List, List, Dict, Dict]:
             "style_normalization": STYLE_NORMALIZATION,
             "max_reviewers": MAX_REVIEWERS,
             "council_size": len(COUNCIL_MODELS),
+            "responses_received": num_responses,
             "chairman": CHAIRMAN_MODEL
+        },
+        "usage": {
+            "by_stage": total_usage,
+            "total": grand_total
         }
     }
+
+    # Add abstention info if any reviewers abstained
+    if abstentions:
+        metadata["abstentions"] = abstentions
+
+    # Add degraded mode info if applicable
+    if degraded_mode:
+        metadata["degraded_mode"] = degraded_mode
 
     return stage1_results, stage2_results, stage3_result, metadata
