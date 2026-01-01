@@ -5,16 +5,36 @@ Provides three levels of skill loading to minimize token usage:
 - Level 1: Metadata only (~100-200 tokens) - YAML frontmatter
 - Level 2: Full SKILL.md content (~500-1000 tokens)
 - Level 3: Resources on demand - files from references/ directory
+
+Robustness features (ADR-034 v2.2):
+- Path traversal protection (#292)
+- Domain-specific exceptions (#293)
+- Thread safety (#294)
+- Cache invalidation (#295)
+- Logging and observability (#296)
 """
 
 from __future__ import annotations
 
+import logging
 import re
+import threading
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional
 
 import yaml
+
+# Module logger
+logger = logging.getLogger(__name__)
+
+# Constants (#296)
+SKILL_FILENAME = "SKILL.md"
+REFERENCES_DIR = "references"
+DEFAULT_SEARCH_PATHS = [".github/skills", ".claude/skills"]
+
+# Valid skill name pattern: lowercase alphanumeric with hyphens, starting with letter/number
+SKILL_NAME_PATTERN = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 
 
 class SkillError(Exception):
@@ -33,6 +53,30 @@ class SkillParseError(SkillError):
     """Raised when skill content cannot be parsed."""
 
     pass
+
+
+def _validate_skill_name(skill_name: str) -> None:
+    """Validate skill name to prevent path traversal attacks.
+
+    Args:
+        skill_name: Name of skill to validate
+
+    Raises:
+        ValueError: If skill name is invalid or contains path traversal patterns
+    """
+    if not skill_name or not skill_name.strip():
+        raise ValueError("Skill name cannot be empty")
+
+    # Check for path traversal patterns
+    if ".." in skill_name or "/" in skill_name or "\\" in skill_name:
+        raise ValueError(f"Path traversal detected in skill name: {skill_name}")
+
+    # Check against valid pattern
+    if not SKILL_NAME_PATTERN.match(skill_name):
+        raise ValueError(
+            f"Invalid skill name '{skill_name}': must be lowercase alphanumeric with hyphens, "
+            "starting with a letter or number"
+        )
 
 
 @dataclass
@@ -221,7 +265,7 @@ def load_skill_resource(path: Path) -> str:
     if not path.exists():
         raise SkillNotFoundError(f"Resource not found: {path}")
 
-    return path.read_text()
+    return path.read_text(encoding="utf-8")
 
 
 class SkillLoader:
@@ -241,6 +285,8 @@ class SkillLoader:
     - Level 1: load_metadata() - Just YAML frontmatter
     - Level 2: load_full() - Complete SKILL.md
     - Level 3: load_resource() - Reference files
+
+    Thread-safe with cache invalidation support (ADR-034 v2.2).
     """
 
     def __init__(self, skills_dir: Path):
@@ -251,6 +297,7 @@ class SkillLoader:
         """
         self.skills_dir = skills_dir
         self._metadata_cache: Dict[str, SkillMetadata] = {}
+        self._lock = threading.RLock()  # Thread safety (#294)
 
     def list_skills(self) -> List[str]:
         """List all available skill names.
@@ -263,7 +310,7 @@ class SkillLoader:
 
         skills = []
         for item in self.skills_dir.iterdir():
-            if item.is_dir() and (item / "SKILL.md").exists():
+            if item.is_dir() and (item / SKILL_FILENAME).exists():
                 skills.append(item.name)
 
         return sorted(skills)
@@ -278,10 +325,14 @@ class SkillLoader:
             Path to skill directory
 
         Raises:
+            ValueError: If skill name is invalid (path traversal protection)
             SkillNotFoundError: If skill doesn't exist
         """
+        # Validate skill name first (path traversal protection #292)
+        _validate_skill_name(skill_name)
+
         skill_path = self.skills_dir / skill_name
-        skill_md = skill_path / "SKILL.md"
+        skill_md = skill_path / SKILL_FILENAME
 
         if not skill_md.exists():
             raise SkillNotFoundError(f"Skill not found: {skill_name}")
@@ -291,7 +342,7 @@ class SkillLoader:
     def load_metadata(self, skill_name: str) -> SkillMetadata:
         """Load Level 1 metadata for a skill.
 
-        Caches results for performance.
+        Caches results for performance. Thread-safe.
 
         Args:
             skill_name: Name of skill to load
@@ -300,17 +351,25 @@ class SkillLoader:
             SkillMetadata with essential fields
 
         Raises:
+            ValueError: If skill name is invalid
             SkillNotFoundError: If skill doesn't exist
             SkillParseError: If SKILL.md is invalid
         """
-        if skill_name in self._metadata_cache:
-            return self._metadata_cache[skill_name]
+        logger.debug(f"Loading metadata for skill: {skill_name}")
+
+        with self._lock:
+            if skill_name in self._metadata_cache:
+                logger.debug(f"Returning cached metadata for: {skill_name}")
+                return self._metadata_cache[skill_name]
 
         skill_path = self._get_skill_path(skill_name)
-        content = (skill_path / "SKILL.md").read_text()
+        content = (skill_path / SKILL_FILENAME).read_text(encoding="utf-8")
         metadata = load_skill_metadata(content)
 
-        self._metadata_cache[skill_name] = metadata
+        with self._lock:
+            self._metadata_cache[skill_name] = metadata
+
+        logger.info(f"Successfully loaded skill metadata: {skill_name}")
         return metadata
 
     def load_full(self, skill_name: str) -> SkillFull:
@@ -323,11 +382,13 @@ class SkillLoader:
             SkillFull with metadata and body
 
         Raises:
+            ValueError: If skill name is invalid
             SkillNotFoundError: If skill doesn't exist
             SkillParseError: If SKILL.md is invalid
         """
+        logger.debug(f"Loading full content for skill: {skill_name}")
         skill_path = self._get_skill_path(skill_name)
-        content = (skill_path / "SKILL.md").read_text()
+        content = (skill_path / SKILL_FILENAME).read_text(encoding="utf-8")
         return load_skill_full(content)
 
     def list_resources(self, skill_name: str) -> List[str]:
@@ -338,9 +399,13 @@ class SkillLoader:
 
         Returns:
             List of resource filenames in references/ directory
+
+        Raises:
+            ValueError: If skill name is invalid
+            SkillNotFoundError: If skill doesn't exist
         """
         skill_path = self._get_skill_path(skill_name)
-        refs_dir = skill_path / "references"
+        refs_dir = skill_path / REFERENCES_DIR
 
         if not refs_dir.exists():
             return []
@@ -358,9 +423,27 @@ class SkillLoader:
             Resource file content
 
         Raises:
+            ValueError: If skill name is invalid
             SkillNotFoundError: If skill or resource doesn't exist
         """
         skill_path = self._get_skill_path(skill_name)
-        resource_path = skill_path / "references" / resource_name
+        resource_path = skill_path / REFERENCES_DIR / resource_name
 
         return load_skill_resource(resource_path)
+
+    def invalidate_cache(self, skill_name: Optional[str] = None) -> None:
+        """Invalidate cached skill data.
+
+        Thread-safe cache invalidation for refreshing stale data.
+
+        Args:
+            skill_name: If provided, invalidate only this skill.
+                        If None, clear all cached data.
+        """
+        with self._lock:
+            if skill_name is not None:
+                logger.debug(f"Invalidating cache for skill: {skill_name}")
+                self._metadata_cache.pop(skill_name, None)
+            else:
+                logger.debug("Invalidating all cached skill data")
+                self._metadata_cache.clear()

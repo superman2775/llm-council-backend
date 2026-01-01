@@ -951,7 +951,166 @@ Skills are deployed at `.github/skills/` for cross-platform compatibility:
 
 ---
 
+## SkillLoader Robustness Requirements
+
+**Added per Council Review (2026-01-01)**: The SkillLoader API was reviewed by the LLM Council and the following robustness requirements were identified for production readiness.
+
+### Current Implementation Gaps
+
+The council identified these issues in `src/llm_council/skills/loader.py`:
+
+| Issue | Severity | Description |
+|-------|----------|-------------|
+| Unprotected File I/O | High | `read_text()` calls lack try/except handling |
+| No Explicit Encoding | Medium | Missing `encoding="utf-8"` on file reads |
+| Path Traversal | High | `skill_name` not sanitized (e.g., `../../../etc/passwd`) |
+| Not Thread-Safe | Medium | Concurrent cache access without locks |
+| Magic Strings | Low | `"SKILL.md"` should be a constant |
+| No Cache Invalidation | Medium | No mechanism to refresh stale cache |
+| Generic Exceptions | Medium | Should raise domain-specific exceptions |
+| No Logging | Low | No observability for debugging |
+
+### Required Improvements
+
+#### 1. Path Traversal Protection (Security-Critical)
+
+```python
+import re
+
+SKILL_NAME_PATTERN = re.compile(r"^[a-z0-9][a-z0-9-]*$")
+
+def _validate_skill_name(skill_name: str) -> None:
+    """Validate skill name to prevent path traversal attacks."""
+    if not SKILL_NAME_PATTERN.match(skill_name):
+        raise ValueError(
+            f"Invalid skill name '{skill_name}': must be lowercase alphanumeric with hyphens"
+        )
+    if ".." in skill_name or "/" in skill_name or "\\" in skill_name:
+        raise ValueError(f"Path traversal detected in skill name: {skill_name}")
+```
+
+#### 2. Domain-Specific Exceptions
+
+```python
+class SkillError(Exception):
+    """Base exception for skill operations."""
+    pass
+
+class SkillNotFoundError(SkillError):
+    """Raised when a skill directory or SKILL.md file is not found."""
+    pass
+
+class MetadataParseError(SkillError):
+    """Raised when YAML frontmatter parsing fails."""
+    pass
+
+class ResourceNotFoundError(SkillError):
+    """Raised when a skill resource file is not found."""
+    pass
+```
+
+#### 3. Thread Safety
+
+```python
+import threading
+
+class SkillLoader:
+    _instance: Optional["SkillLoader"] = None
+    _lock = threading.RLock()
+
+    def __new__(cls, *args, **kwargs):
+        with cls._lock:
+            if cls._instance is None:
+                cls._instance = super().__new__(cls)
+            return cls._instance
+
+    def get_skill_metadata(self, skill_name: str) -> SkillMetadata:
+        with self._lock:
+            if skill_name in self._metadata_cache:
+                return self._metadata_cache[skill_name]
+            # ... load and cache
+```
+
+#### 4. Explicit Encoding
+
+```python
+content = skill_md_path.read_text(encoding="utf-8")
+```
+
+#### 5. Cache Invalidation
+
+```python
+def invalidate_cache(self, skill_name: Optional[str] = None) -> None:
+    """Invalidate cached skill data.
+
+    Args:
+        skill_name: If provided, invalidate only this skill. Otherwise, clear all.
+    """
+    with self._lock:
+        if skill_name:
+            self._metadata_cache.pop(skill_name, None)
+            self._full_cache.pop(skill_name, None)
+        else:
+            self._metadata_cache.clear()
+            self._full_cache.clear()
+```
+
+#### 6. Logging
+
+```python
+import logging
+
+logger = logging.getLogger(__name__)
+
+def get_skill_metadata(self, skill_name: str) -> SkillMetadata:
+    logger.debug(f"Loading metadata for skill: {skill_name}")
+    try:
+        # ... implementation
+        logger.info(f"Successfully loaded skill metadata: {skill_name}")
+    except Exception as e:
+        logger.error(f"Failed to load skill {skill_name}: {e}")
+        raise
+```
+
+#### 7. Constants
+
+```python
+SKILL_FILENAME = "SKILL.md"
+REFERENCES_DIR = "references"
+DEFAULT_SEARCH_PATHS = [".github/skills", ".claude/skills"]
+```
+
+### Test Requirements
+
+Each improvement requires corresponding tests:
+
+| Improvement | Test Coverage |
+|-------------|---------------|
+| Path traversal | `test_rejects_path_traversal_attempts` |
+| Custom exceptions | `test_raises_skill_not_found_error`, `test_raises_metadata_parse_error` |
+| Thread safety | `test_concurrent_access_is_safe` |
+| Encoding | `test_handles_utf8_content` |
+| Cache invalidation | `test_cache_invalidation_single`, `test_cache_invalidation_all` |
+| Logging | `test_logs_skill_loading_events` |
+
+### GitHub Issues
+
+The following issues track this work:
+
+- [ ] #292: SkillLoader path traversal protection
+- [ ] #293: SkillLoader domain-specific exceptions
+- [ ] #294: SkillLoader thread safety
+- [ ] #295: SkillLoader cache invalidation
+- [ ] #296: SkillLoader logging and observability
+
+---
+
 ## Changelog
+
+### v2.2 (2026-01-01)
+- **Robustness**: Added SkillLoader implementation requirements section per council review
+- **Security**: Documented path traversal protection requirement
+- **Quality**: Added domain-specific exceptions, thread safety, cache invalidation requirements
 
 ### v2.1 (2025-12-31)
 - **Implementation**: Added Implementation Status section documenting Track A and Track B completion
