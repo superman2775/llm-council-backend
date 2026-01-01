@@ -118,7 +118,7 @@ The raw synthesis needs structured extraction. That's where `verdict_extractor.p
 
 ```python
 import re
-from statistics import stdev, mean
+from statistics import pstdev
 
 def calculate_confidence_from_agreement(stage2_results: list) -> float:
     """Calculate confidence from rubric score agreement (0.0-1.0)."""
@@ -135,8 +135,8 @@ def calculate_confidence_from_agreement(stage2_results: list) -> float:
         return 0.5
 
     # Low variance = high confidence (normalized to 0-1)
-    # Max possible stdev for 1-10 scale is ~4.5
-    variance_factor = 1.0 - min(stdev(all_scores) / 4.5, 1.0)
+    # Max population stdev for 1-10 scale is ~4.5 (all values at extremes)
+    variance_factor = 1.0 - min(pstdev(all_scores) / 4.5, 1.0)
     return round(variance_factor, 2)
 
 def extract_verdict_from_synthesis(stage3_result, stage2_results, threshold=0.7):
@@ -167,10 +167,7 @@ def extract_verdict_from_synthesis(stage3_result, stage2_results, threshold=0.7)
     return "unclear", 0.50
 ```
 
-**Confidence calculation** is based on council agreement:
-- **Rubric score variance**: Low variance across reviewers = high confidence
-- **Ranking agreement**: Reviewers ranking responses similarly = high confidence
-- **Borda count spread**: Clear winner (large point gap) = high confidence
+**Confidence calculation** is based on rubric score agreement across reviewers. When all reviewers give similar scores (low variance), confidence is high. When scores diverge significantly, confidence drops, potentially triggering the "UNCLEAR" verdict for human review.
 
 ## Audit Trail: Complete Transparency
 
