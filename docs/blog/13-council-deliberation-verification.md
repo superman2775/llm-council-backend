@@ -4,9 +4,13 @@
 
 ---
 
-Code review is hard. It requires understanding context, spotting subtle bugs, and making judgment calls about quality. What if multiple AI models could deliberate together, anonymously evaluate each other's reviews, and reach a consensus verdict?
+Code review is hard. It requires understanding context, spotting subtle bugs, and making judgment calls about quality.
 
-That's exactly what LLM Council's verification system now does. This post explains how 3-stage deliberation produces more reliable code verification than any single model alone.
+Your CI pipeline just approved a PR with a subtle TOCTOU race condition. One AI model said "looks good"—but it only caught 2 of 4 issues. A single model's opinion isn't enough for production code.
+
+What if multiple AI models could deliberate together, anonymously evaluate each other's reviews, and reach a consensus verdict? That's exactly what LLM Council's verification system now does.
+
+This post explains how 3-stage deliberation produces more reliable code verification than any single model alone.
 
 ## The Problem with Single-Model Verification
 
@@ -97,9 +101,11 @@ stage3_result, _, _ = await stage3_synthesize_final(
 ```
 
 The chairman sees:
-- All original reviews (with model attribution)
+- All original reviews (**still anonymized** as "Response A", "Response B", etc.)
 - All peer rankings (showing consensus)
-- Aggregate Borda scores (ranking-based voting where 1st place = N points, 2nd = N-1, etc.)
+- Aggregate Borda scores (ranking-based voting where 1st = N-1 points, 2nd = N-2, last = 0)
+
+> **Note**: Model attribution is only revealed in the audit trail—the chairman makes decisions based solely on review quality, not model identity.
 
 **Verdict Logic**: The chairman renders **APPROVED** or **REJECTED** (binary). The system then applies the confidence threshold:
 - **PASS** (exit 0): APPROVED with confidence ≥ threshold (default 0.7)
@@ -111,6 +117,28 @@ The chairman sees:
 The raw synthesis needs structured extraction. That's where `verdict_extractor.py` comes in:
 
 ```python
+import re
+from statistics import stdev, mean
+
+def calculate_confidence_from_agreement(stage2_results: list) -> float:
+    """Calculate confidence from rubric score agreement (0.0-1.0)."""
+    if not stage2_results:
+        return 0.5
+
+    # Collect all rubric scores across reviewers
+    all_scores = []
+    for result in stage2_results:
+        scores = result.get("rubric_scores", {})
+        all_scores.extend(scores.values())
+
+    if len(all_scores) < 2:
+        return 0.5
+
+    # Low variance = high confidence (normalized to 0-1)
+    # Max possible stdev for 1-10 scale is ~4.5
+    variance_factor = 1.0 - min(stdev(all_scores) / 4.5, 1.0)
+    return round(variance_factor, 2)
+
 def extract_verdict_from_synthesis(stage3_result, stage2_results, threshold=0.7):
     """Extract verdict and confidence from chairman synthesis."""
     response = stage3_result.get("response", "")
@@ -118,9 +146,13 @@ def extract_verdict_from_synthesis(stage3_result, stage2_results, threshold=0.7)
     # Calculate confidence from reviewer agreement
     confidence = calculate_confidence_from_agreement(stage2_results)
 
-    # Look for structured verdict line (anchored for reliability)
-    # Chairman is prompted to output: "FINAL_VERDICT: APPROVED" or "FINAL_VERDICT: REJECTED"
-    verdict_match = re.search(r"^FINAL_VERDICT:\s*(APPROVED|REJECTED)", response, re.MULTILINE)
+    # Match FINAL_VERDICT with whitespace tolerance (handles model formatting variations)
+    # Pattern allows leading whitespace and case-insensitive matching
+    verdict_match = re.search(
+        r"^\s*FINAL_VERDICT:\s*(APPROVED|REJECTED)\b",
+        response,
+        re.MULTILINE | re.IGNORECASE
+    )
 
     if verdict_match:
         raw_verdict = verdict_match.group(1).upper()
@@ -131,7 +163,7 @@ def extract_verdict_from_synthesis(stage3_result, stage2_results, threshold=0.7)
             return "unclear", confidence  # Low confidence triggers human review
         return "fail", confidence
 
-    # No structured verdict found
+    # No structured verdict found - default to unclear with low confidence
     return "unclear", 0.50
 ```
 
@@ -191,6 +223,18 @@ Integration is straightforward:
     esac
 ```
 
+## Performance Considerations
+
+Multi-model deliberation trades speed for accuracy:
+
+| Tier | Models | Typical Latency | Use Case |
+|------|--------|-----------------|----------|
+| quick | 2 | ~20-30s | Fast feedback, low-risk changes |
+| balanced | 3 | ~45-60s | Standard PR verification |
+| high | 4-5 | ~60-90s | Security-critical code |
+
+While slower than single-model verification, the cost of a false positive ("looks good" on buggy code) far exceeds the cost of a 60-second deliberation. All three stages run in parallel where possible—Stage 1 queries all models simultaneously, and Stage 2 rankings are collected in parallel.
+
 ## What Makes This Different
 
 Other AI verification approaches typically:
@@ -207,26 +251,55 @@ LLM Council verification provides:
 
 ## Try It
 
-The verification system is available via MCP:
-
-```python
-# Via MCP client
-result = await mcp_client.call_tool(
-    "mcp://llm-council/verify",
-    {
-        "snapshot_id": "abc1234",
-        "target_paths": ["src/"],
-        "rubric_focus": "Security",
-        "confidence_threshold": 0.7
-    }
-)
-print(f"Verdict: {result.verdict} (confidence: {result.confidence})")
-```
-
-Or via the skills-based approach in Claude Code:
+### Prerequisites
 
 ```bash
-# In Claude Code
+# Install the LLM Council MCP server
+pip install llm-council-core
+
+# Set your OpenRouter API key
+export OPENROUTER_API_KEY="sk-or-..."
+```
+
+### Via MCP Client
+
+```python
+import asyncio
+from mcp import ClientSession
+
+async def verify_commit():
+    async with ClientSession() as session:
+        # Connect to the llm-council MCP server
+        await session.connect("llm-council")
+
+        result = await session.call_tool(
+            "verify",
+            {
+                "snapshot_id": "abc1234",  # Git commit SHA
+                "target_paths": ["src/"],  # Files/dirs to verify
+                "rubric_focus": "Security",
+                "confidence_threshold": 0.7
+            }
+        )
+        print(result)
+
+asyncio.run(verify_commit())
+```
+
+### Via CLI
+
+```bash
+# Verify a specific commit
+llm-council verify abc1234 --paths src/ --focus security
+
+# Verify HEAD with default settings
+llm-council verify $(git rev-parse HEAD)
+```
+
+### Via Claude Code Skills
+
+```bash
+# In Claude Code, use the council-verify skill
 /council-verify --snapshot HEAD~1 --focus security
 ```
 
