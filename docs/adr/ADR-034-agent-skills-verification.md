@@ -897,7 +897,7 @@ All verification deliberations saved for audit:
 | Exit codes (0=PASS, 1=FAIL, 2=UNCLEAR) | ✅ Complete | #279 | Logic exists but always returns 0 |
 | MCP server: `mcp://llm-council/verify` | ⚠️ Partial | #279 | Returns hardcoded values, no council execution |
 | MCP server: `mcp://llm-council/audit` | ✅ Complete | #279 | |
-| **Council deliberation integration** | ❌ Missing | - | See #TBD |
+| **Council deliberation integration** | ❌ Missing | - | See #297 |
 
 #### Missing: Council Deliberation Integration
 
