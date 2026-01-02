@@ -6,6 +6,8 @@
 
 LLM Council queries multiple models in parallel, has them critique each other anonymously, and synthesizes a consensus. This post explains the architecture and the tradeoffs.
 
+> **Note on model names:** Examples throughout this series use model identifiers like `openai/gpt-4o`, `anthropic/claude-3-5-sonnet`, etc. Some examples include speculative or preview model names for illustration. Always check your LLM gateway for currently available models.
+
 ## The Three-Stage Pipeline
 
 ### Stage 1: Parallel Generation
@@ -183,4 +185,4 @@ This is post 1 of 7. Coming up:
 
 ---
 
-*LLM Council is open source: [github.com/amiable-dev/llm-council](https://github.com/amiable-dev/llm-council). Install with `pip install llm-council-core`.*
+*LLM Council is open source: [github.com/amiable-dev/llm-council](https://github.com/amiable-dev/llm-council). Install with `pip install llm-council-core` (imports as `llm_council`).*
