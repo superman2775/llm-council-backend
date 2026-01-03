@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.24.2] - 2026-01-03
+
+### Documentation
+
+- **ADR-036 Phase 2-3 Changelog**: Added implementation details for Standard and Enterprise tiers
+  - Phase 2: Temporal Consistency Score, Cross-Model Calibration, Rubric Breakdown
+  - Phase 3: DeepEval/RAGAS integration, Golden Datasets, Webhooks, Dashboard API
+- **Gate 3.4 Security Implementation**: Documented security features implemented in council-cloud v0.3.1
+  - SSRF protection with DNS resolution
+  - JWT authentication middleware
+  - Rate limiting with sliding window
+  - Secret rotation for webhooks
+
 ## [0.24.1] - 2026-01-03
 
 ### Fixed
