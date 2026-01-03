@@ -853,3 +853,35 @@ async def consult_council(
 - JWT/OAuth2 middleware for production dashboard auth
 - Rate limiting on expensive API endpoints
 - Secret rotation strategy for webhook signing keys
+
+### Gate 3.4 Security Implementation (Council Cloud v0.3.1) - 2026-01-03
+
+All Gate 3.4 security recommendations have been implemented:
+
+1. **SSRF Protection** (`validate_url_for_ssrf()`)
+   - DNS resolution to detect IP rebinding attacks
+   - `is_private_ip()` blocks RFC 1918, loopback, link-local, reserved ranges
+   - HTTPS enforcement with localhost exception for development
+   - `URLValidationResult` dataclass with resolved IP and validation status
+
+2. **JWT Authentication** (`JWTAuthenticator`)
+   - HMAC-SHA256 signing with timing-safe validation (`hmac.compare_digest`)
+   - `JWTConfig` for secret, issuer, and expiration settings
+   - `require_role()` decorator for role-based access control
+   - `ROLE_VIEWER` and `ROLE_ADMIN` constants
+
+3. **Rate Limiting** (`RateLimiter`)
+   - Sliding window algorithm for accurate rate tracking
+   - `RateLimitConfig` for requests per window configuration
+   - Per-key tracking for user/IP-based limiting
+   - `RateLimitResult` with allowed status and retry-after
+
+4. **Secret Rotation** (`SecretRotator`)
+   - `RotatingSecret` dataclass with current/previous secrets
+   - Overlapping validity during rotation for zero-downtime updates
+   - Validates signatures against both current and previous secrets
+   - Automatic detection of secrets needing rotation
+
+**Files (council-cloud v0.3.1):**
+- `packages/quality/src/quality/enterprise/security.py` - Security module
+- `packages/quality/tests/enterprise/test_security.py` - 38 TDD tests
