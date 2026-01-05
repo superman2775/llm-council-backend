@@ -28,6 +28,11 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
 
 from llm_council.council import run_full_council
+from llm_council.unified_config import (
+    set_request_api_key,
+    clear_request_api_keys,
+    get_api_key,
+)
 
 
 # Security scheme for Bearer token authentication (ADR-038)
@@ -167,17 +172,18 @@ async def council_run(request: CouncilRequest) -> CouncilResponse:
     API key can be provided in the request body or via OPENROUTER_API_KEY
     environment variable.
     """
-    # BYOK: Use provided key or fall back to environment
-    api_key = request.api_key or os.getenv("OPENROUTER_API_KEY")
+    # BYOK: Use provided key or fall back to environment (via unified config)
+    api_key = request.api_key or get_api_key("openrouter")
     if not api_key:
         raise HTTPException(
             status_code=400,
             detail="API key required. Pass 'api_key' in request or set OPENROUTER_API_KEY environment variable.",
         )
 
-    # Temporarily set the API key in environment for the council to use
-    original_key = os.environ.get("OPENROUTER_API_KEY")
-    os.environ["OPENROUTER_API_KEY"] = api_key
+    # Set request-scoped API key (async-safe, no race condition)
+    # This uses ContextVar which is automatically scoped to the current async context
+    if request.api_key:
+        set_request_api_key("openrouter", request.api_key)
 
     # Build webhook config if URL provided (ADR-025a Issue #76)
     webhook_config = None
@@ -213,11 +219,8 @@ async def council_run(request: CouncilRequest) -> CouncilResponse:
             metadata=metadata,
         )
     finally:
-        # Restore original environment
-        if original_key is not None:
-            os.environ["OPENROUTER_API_KEY"] = original_key
-        elif "OPENROUTER_API_KEY" in os.environ:
-            del os.environ["OPENROUTER_API_KEY"]
+        # Clear request-scoped API keys (cleanup for this async context)
+        clear_request_api_keys()
 
 
 @app.get("/v1/council/stream", tags=["Council"], dependencies=[auth_dependency])
@@ -254,8 +257,8 @@ async def council_stream(
     API key can be provided as a query parameter or via OPENROUTER_API_KEY
     environment variable.
     """
-    # BYOK: Use provided key or fall back to environment
-    effective_api_key = api_key or os.getenv("OPENROUTER_API_KEY")
+    # BYOK: Use provided key or fall back to environment (via unified config)
+    effective_api_key = api_key or get_api_key("openrouter")
     if not effective_api_key:
         raise HTTPException(
             status_code=400,

@@ -31,6 +31,7 @@ import fnmatch
 import json
 import os
 import re
+from contextvars import ContextVar
 from dataclasses import field
 from pathlib import Path
 from typing import Annotated, Any, Dict, List, Literal, Optional, Union
@@ -39,6 +40,54 @@ import yaml
 from pydantic import BaseModel, BeforeValidator, Field, field_validator, model_validator
 
 from .tier_contract import TierContract, create_tier_contract
+
+
+# =============================================================================
+# Request-Scoped API Key Context (Security Fix for Async Race Condition)
+# =============================================================================
+# This ContextVar provides async-safe, request-scoped API key storage.
+# Unlike os.environ which is global and causes race conditions in async handlers,
+# ContextVar is automatically scoped to the current async context.
+#
+# Usage in HTTP handlers:
+#     _request_api_key.set({"openrouter": user_provided_key})
+#     try:
+#         await run_full_council(...)
+#     finally:
+#         _request_api_key.set({})  # Clear after request
+
+_request_api_key: ContextVar[Dict[str, str]] = ContextVar("request_api_key", default={})
+
+
+def set_request_api_key(provider: str, key: str) -> None:
+    """Set a request-scoped API key for the current async context.
+
+    This is async-safe and does not affect other concurrent requests.
+
+    Args:
+        provider: Provider name (e.g., "openrouter", "anthropic", "openai")
+        key: The API key to use for this request
+    """
+    current = _request_api_key.get().copy()
+    current[provider] = key
+    _request_api_key.set(current)
+
+
+def clear_request_api_keys() -> None:
+    """Clear all request-scoped API keys for the current async context."""
+    _request_api_key.set({})
+
+
+def get_request_api_key(provider: str) -> Optional[str]:
+    """Get a request-scoped API key if set.
+
+    Args:
+        provider: Provider name (e.g., "openrouter")
+
+    Returns:
+        The request-scoped API key, or None if not set
+    """
+    return _request_api_key.get().get(provider)
 
 
 # =============================================================================
@@ -1523,6 +1572,7 @@ def _get_api_key(provider: str = "openrouter") -> Optional[str]:
     Use get_api_key() for the public API.
 
     Priority:
+    0. Request-scoped ContextVar (async-safe, for HTTP BYOK)
     1. Environment variable (e.g., OPENROUTER_API_KEY)
     2. macOS Keychain (via keyring library, if available)
     3. User config file (deprecated, emits warning)
@@ -1534,6 +1584,13 @@ def _get_api_key(provider: str = "openrouter") -> Optional[str]:
         API key string or None if not found
     """
     global _key_source
+
+    # 0. Check request-scoped ContextVar first (async-safe for HTTP handlers)
+    # This allows per-request API keys without mutating global os.environ
+    request_key = get_request_api_key(provider)
+    if request_key:
+        _key_source = "request_context"
+        return request_key
 
     # Normalize provider name to uppercase for env var lookup
     env_var = f"{provider.upper()}_API_KEY"
@@ -1576,12 +1633,16 @@ def get_api_key(provider: str) -> Optional[str]:
     """Resolve API key for provider (ADR-013 resolution chain).
 
     Priority:
+    0. Request-scoped ContextVar (for async-safe BYOK in HTTP handlers)
     1. Environment variable (e.g., OPENROUTER_API_KEY)
     2. macOS Keychain (via keyring library, if available)
     3. None (caller handles missing key)
 
     Note: dotenv is loaded at module import, so .env vars
     are already in os.environ.
+
+    For HTTP handlers with user-provided keys, use set_request_api_key()
+    instead of mutating os.environ to avoid race conditions.
 
     Args:
         provider: Provider name (e.g., "openrouter", "anthropic", "openai")

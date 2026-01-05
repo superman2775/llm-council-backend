@@ -39,8 +39,8 @@ class TestCouncilRunEndpoint:
         """Should return 400 if no API key provided."""
         from llm_council.http_server import app
 
-        # Ensure no env var is set
-        with patch.dict(os.environ, {}, clear=True):
+        # Patch get_api_key to return None (simulates no key available from any source)
+        with patch("llm_council.http_server.get_api_key", return_value=None):
             client = TestClient(app)
             response = client.post("/v1/council/run", json={"prompt": "test question"})
 

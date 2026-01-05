@@ -14,11 +14,11 @@ Usage:
 """
 
 import asyncio
-import os
 import uuid
 from typing import Any, AsyncIterator, Dict, List, Optional
 
 from llm_council.council import run_council_with_fallback
+from llm_council.unified_config import set_request_api_key, clear_request_api_keys
 from llm_council.webhooks.types import WebhookConfig, WebhookEventType
 
 
@@ -75,10 +75,9 @@ async def run_council(
         },
     }
 
-    # Set up API key if provided
-    original_key = os.environ.get("OPENROUTER_API_KEY")
+    # Set up API key if provided (async-safe using ContextVar)
     if api_key:
-        os.environ["OPENROUTER_API_KEY"] = api_key
+        set_request_api_key("openrouter", api_key)
 
     try:
         # Parse models if provided
@@ -154,11 +153,8 @@ async def run_council(
         }
 
     finally:
-        # Restore original API key
-        if original_key is not None:
-            os.environ["OPENROUTER_API_KEY"] = original_key
-        elif api_key and "OPENROUTER_API_KEY" in os.environ:
-            del os.environ["OPENROUTER_API_KEY"]
+        # Clear request-scoped API keys (cleanup for this async context)
+        clear_request_api_keys()
 
 
 __all__ = ["run_council"]
