@@ -121,6 +121,9 @@ async def run_council(
             # Signal that the council is done
             event_queue.put_nowait(_DONE)
 
+    # Track the task so we can cancel it on client disconnect
+    council_task = None
+
     try:
         # Start the council in a background task
         council_task = asyncio.create_task(run_council_task())
@@ -196,6 +199,17 @@ async def run_council(
                     },
                 }
 
+    except (GeneratorExit, asyncio.CancelledError):
+        # Client disconnected - cancel the background task to prevent zombie processing
+        # This is CRITICAL to avoid wasting LLM API calls when client is gone
+        if council_task is not None and not council_task.done():
+            council_task.cancel()
+            try:
+                await council_task
+            except asyncio.CancelledError:
+                pass
+        raise  # Re-raise to properly close the generator
+
     except Exception as e:
         # Emit error event for any unexpected errors
         yield {
@@ -207,6 +221,13 @@ async def run_council(
         }
 
     finally:
+        # Cancel task if still running (belt and suspenders cleanup)
+        if council_task is not None and not council_task.done():
+            council_task.cancel()
+            try:
+                await asyncio.wait_for(council_task, timeout=1.0)
+            except (asyncio.CancelledError, asyncio.TimeoutError):
+                pass
         # Clear request-scoped API keys (cleanup for this async context)
         clear_request_api_keys()
 
