@@ -18,10 +18,8 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from llm_council.layer_contracts import (
-    LayerEventType,
-    emit_layer_event,
-)
+# Lazy import of layer_contracts to avoid circular dependency
+# Used in _emit_rollback_event method
 
 
 class MetricType(Enum):
@@ -285,6 +283,9 @@ class RollbackMonitor:
         Returns:
             List of RollbackEvents for breaches
         """
+        # Lazy import to avoid circular dependency
+        from llm_council.layer_contracts import LayerEventType, emit_layer_event
+
         events = []
 
         if self.check_thresholds():

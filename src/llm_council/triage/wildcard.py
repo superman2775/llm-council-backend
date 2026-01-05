@@ -5,12 +5,14 @@ to add diverse expertise to the council.
 """
 
 import re
-from typing import List, Optional
-
-from llm_council.tier_contract import TierContract
-from llm_council.layer_contracts import LayerEventType, emit_layer_event
+from typing import TYPE_CHECKING, List, Optional
 
 from .types import DomainCategory, WildcardConfig, DEFAULT_SPECIALIST_POOLS
+
+# Type-only imports to avoid circular dependency
+# (layer_contracts -> triage -> wildcard -> layer_contracts)
+if TYPE_CHECKING:
+    from llm_council.tier_contract import TierContract
 
 # Domain classification keywords
 # Note: Using word boundaries where needed to avoid substring false positives
@@ -176,7 +178,7 @@ def select_wildcard(
     domain: DomainCategory,
     exclude_models: Optional[List[str]] = None,
     config: Optional[WildcardConfig] = None,
-    tier_contract: Optional[TierContract] = None,
+    tier_contract: Optional["TierContract"] = None,
 ) -> str:
     """Select a wildcard specialist model for the domain.
 
@@ -192,6 +194,9 @@ def select_wildcard(
     Returns:
         Model identifier string for the selected wildcard
     """
+    # Lazy import to avoid circular dependency
+    from llm_council.layer_contracts import LayerEventType, emit_layer_event
+
     if config is None:
         config = WildcardConfig()
 

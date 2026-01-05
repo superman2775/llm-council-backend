@@ -5,8 +5,9 @@ import html
 import random
 import uuid
 from datetime import datetime, timezone
-from typing import List, Dict, Any, Tuple, Optional, Callable, Awaitable
+from typing import TYPE_CHECKING, List, Dict, Any, Tuple, Optional, Callable, Awaitable
 
+# Core imports that don't cause circular dependencies
 from llm_council.gateway_adapter import (
     query_models_parallel,
     query_model,
@@ -17,85 +18,122 @@ from llm_council.gateway_adapter import (
     STATUS_AUTH_ERROR,
     STATUS_ERROR,
 )
-
-# ADR-032: Migrated to unified_config
 from llm_council.unified_config import get_config
 
+# Type-only imports for type hints (no circular import issues)
+if TYPE_CHECKING:
+    from llm_council.tier_contract import TierContract
+    from llm_council.webhooks import WebhookConfig
 
-# Lazy-loaded config helpers (call these, not the module-level constants)
+
+# =============================================================================
+# ADR-032: Lazy-loaded config helpers
+# =============================================================================
+# IMPORTANT: Always use these helper functions instead of caching config values.
+# Calling get_config() at each use ensures config changes are picked up without
+# requiring a restart in long-running applications.
+#
+# These helpers also check for patched module attributes to support test mocking.
+# Tests can patch e.g. "llm_council.council.COUNCIL_MODELS" and the helper will
+# use the patched value.
+
+import sys as _sys
+
+
 def _get_council_config():
     """Get council config section."""
     return get_config().council
 
 
+def _check_patched_attr(attr_name: str):
+    """Check if a module attribute was patched (for test support).
+
+    When tests use `patch("llm_council.council.COUNCIL_MODELS", [...])`,
+    the patch creates a real attribute on the module. We check for this
+    to support test mocking while still using lazy loading in production.
+    """
+    module = _sys.modules.get(__name__)
+    if module is not None:
+        # Check if attribute exists directly on module (was patched)
+        # but NOT in _DEPRECATED_CONFIG_ATTRS (which means it was set by test)
+        if attr_name in module.__dict__:
+            return module.__dict__[attr_name]
+    return None
+
+
 def _get_council_models() -> list:
     """Get council models from unified config."""
+    patched = _check_patched_attr("COUNCIL_MODELS")
+    if patched is not None:
+        return patched
     return _get_council_config().models
 
 
 def _get_chairman_model() -> str:
+    patched = _check_patched_attr("CHAIRMAN_MODEL")
+    if patched is not None:
+        return patched
     return _get_council_config().chairman
 
 
 def _get_synthesis_mode() -> str:
+    patched = _check_patched_attr("SYNTHESIS_MODE")
+    if patched is not None:
+        return patched
     return _get_council_config().synthesis_mode
 
 
 def _get_exclude_self_votes() -> bool:
+    patched = _check_patched_attr("EXCLUDE_SELF_VOTES")
+    if patched is not None:
+        return patched
     return _get_council_config().exclude_self_votes
 
 
 def _get_style_normalization():
+    patched = _check_patched_attr("STYLE_NORMALIZATION")
+    if patched is not None:
+        return patched
     return _get_council_config().style_normalization
 
 
 def _get_normalizer_model() -> str:
+    patched = _check_patched_attr("NORMALIZER_MODEL")
+    if patched is not None:
+        return patched
     return _get_council_config().normalizer_model
 
 
 def _get_max_reviewers():
+    patched = _check_patched_attr("MAX_REVIEWERS")
+    if patched is not None:
+        return patched
     return _get_council_config().max_reviewers
 
 
 def _get_cache_enabled() -> bool:
+    patched = _check_patched_attr("CACHE_ENABLED")
+    if patched is not None:
+        return patched
     return get_config().cache.enabled
 
 
-# Module-level aliases for backwards compatibility with test mocking
-# These are the initial values; tests can mock them for isolation
-COUNCIL_MODELS = _get_council_models()
-CHAIRMAN_MODEL = _get_chairman_model()
-SYNTHESIS_MODE = _get_synthesis_mode()
-EXCLUDE_SELF_VOTES = _get_exclude_self_votes()
-STYLE_NORMALIZATION = _get_style_normalization()
-NORMALIZER_MODEL = _get_normalizer_model()
-MAX_REVIEWERS = _get_max_reviewers()
-CACHE_ENABLED = _get_cache_enabled()
-from llm_council.tier_contract import TierContract
-from llm_council.rubric import (
-    parse_rubric_evaluation,
-    calculate_weighted_score,
-    calculate_weighted_score_with_accuracy_ceiling,
-)
+# =============================================================================
+# Deferred imports to avoid circular dependencies
+# =============================================================================
+# These modules import from layer_contracts, which imports from triage,
+# which may import back to council. Placing them here ensures all config
+# helpers are defined first.
+
 from llm_council.bias_audit import (
     run_bias_audit,
     extract_scores_from_stage2,
     derive_position_mapping,
     BiasAuditResult,
 )
-from llm_council.safety_gate import (
-    check_response_safety,
-    apply_safety_gate_to_score,
-    SafetyCheckResult,
-)
-from llm_council.quality import (
-    calculate_quality_metrics,
-    should_include_quality_metrics,
-)
-from llm_council.telemetry import get_telemetry
-from llm_council.cache import get_cache_key, get_cached_response, save_to_cache
 from llm_council.bias_persistence import persist_session_bias_data
-from llm_council.triage import run_triage
+from llm_council.cache import get_cache_key, get_cached_response, save_to_cache
+from llm_council.dissent import extract_dissent_from_stage2
 from llm_council.layer_contracts import (
     LayerEvent,
     LayerEventType,
@@ -103,11 +141,23 @@ from llm_council.layer_contracts import (
     cross_l1_to_l2,
     cross_l2_to_l3,
 )
-from llm_council.webhooks import (
-    WebhookConfig,
-    EventBridge,
-    DispatchMode,
+from llm_council.quality import (
+    calculate_quality_metrics,
+    should_include_quality_metrics,
 )
+from llm_council.rubric import (
+    parse_rubric_evaluation,
+    calculate_weighted_score,
+    calculate_weighted_score_with_accuracy_ceiling,
+)
+from llm_council.safety_gate import (
+    check_response_safety,
+    apply_safety_gate_to_score,
+    SafetyCheckResult,
+)
+from llm_council.telemetry import get_telemetry
+from llm_council.tier_contract import TierContract
+from llm_council.triage import run_triage
 from llm_council.verdict import (
     VerdictType,
     VerdictResult,
@@ -117,8 +167,44 @@ from llm_council.verdict import (
     detect_deadlock,
     calculate_borda_spread,
 )
-from llm_council.dissent import extract_dissent_from_stage2
 from llm_council.voting import VotingAuthority, get_vote_weight
+from llm_council.webhooks import (
+    WebhookConfig,
+    EventBridge,
+    DispatchMode,
+)
+
+
+# =============================================================================
+# Backwards compatibility: Dynamic attribute access for deprecated constants
+# =============================================================================
+# These were previously frozen at import time. Now they are looked up dynamically
+# via __getattr__ to ensure fresh config values in long-running applications.
+# Tests can still patch these by patching the helper functions.
+
+_DEPRECATED_CONFIG_ATTRS = {
+    "COUNCIL_MODELS": _get_council_models,
+    "CHAIRMAN_MODEL": _get_chairman_model,
+    "SYNTHESIS_MODE": _get_synthesis_mode,
+    "EXCLUDE_SELF_VOTES": _get_exclude_self_votes,
+    "STYLE_NORMALIZATION": _get_style_normalization,
+    "NORMALIZER_MODEL": _get_normalizer_model,
+    "MAX_REVIEWERS": _get_max_reviewers,
+    "CACHE_ENABLED": _get_cache_enabled,
+}
+
+
+def __getattr__(name: str):
+    """Provide lazy access to deprecated config constants.
+
+    This allows:
+    - from llm_council.council import COUNCIL_MODELS (for backwards compatibility)
+    - Fresh config values on each access (not frozen at import time)
+    - Tests to still mock llm_council.council.COUNCIL_MODELS
+    """
+    if name in _DEPRECATED_CONFIG_ATTRS:
+        return _DEPRECATED_CONFIG_ATTRS[name]()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 # =============================================================================
@@ -189,7 +275,7 @@ async def stage1_collect_responses(user_query: str) -> Tuple[List[Dict[str, Any]
     messages = [{"role": "user", "content": user_query}]
 
     # Query all models in parallel
-    responses = await query_models_parallel(COUNCIL_MODELS, messages)
+    responses = await query_models_parallel(_get_council_models(), messages)
 
     # Format results and aggregate usage
     stage1_results = []
@@ -237,7 +323,7 @@ async def stage1_collect_responses_with_status(
         - usage dict: Aggregated token counts
         - model_statuses dict: Per-model status information
     """
-    council_models = models if models is not None else COUNCIL_MODELS
+    council_models = models if models is not None else _get_council_models()
     messages = [{"role": "user", "content": user_query}]
 
     # Query all models with progress tracking
@@ -481,7 +567,7 @@ async def run_council_with_fallback(
     elif tier_contract is not None:
         council_models = tier_contract.allowed_models
     else:
-        council_models = COUNCIL_MODELS
+        council_models = _get_council_models()
 
     requested_models = len(council_models)
 
@@ -1162,10 +1248,10 @@ Now provide your evaluation and ranking:"""
     messages = [{"role": "user", "content": ranking_prompt}]
 
     # Determine which models will review (stratified sampling for large councils)
-    reviewers = list(COUNCIL_MODELS)  # Copy the list
-    if _get_max_reviewers() is not None and len(COUNCIL_MODELS) > _get_max_reviewers():
+    reviewers = list(_get_council_models())  # Copy the list
+    if _get_max_reviewers() is not None and len(_get_council_models()) > _get_max_reviewers():
         # For large councils, randomly sample k reviewers
-        reviewers = random.sample(list(COUNCIL_MODELS), _get_max_reviewers())
+        reviewers = random.sample(list(_get_council_models()), _get_max_reviewers())
 
     # Get rankings from reviewer models in parallel
     # Disable tools to prevent prompt injection via tool invocation
@@ -1883,7 +1969,7 @@ async def run_full_council(
         await event_bridge.emit(
             LayerEvent(
                 event_type=LayerEventType.L3_COUNCIL_START,
-                data={"query": user_query[:100], "models": models or COUNCIL_MODELS},
+                data={"query": user_query[:100], "models": models or _get_council_models()},
             )
         )
 
@@ -2068,7 +2154,7 @@ async def run_full_council(
             "exclude_self_votes": _get_exclude_self_votes(),
             "style_normalization": _get_style_normalization(),
             "max_reviewers": _get_max_reviewers(),
-            "council_size": len(COUNCIL_MODELS),
+            "council_size": len(_get_council_models()),
             "responses_received": num_responses,
             "chairman": _get_chairman_model(),
             "verdict_type": verdict_type.value,  # ADR-025b: Requested verdict type
@@ -2142,7 +2228,7 @@ async def run_full_council(
         telemetry_event = {
             "type": "council_completed",
             "timestamp": datetime.now(timezone.utc).isoformat(),
-            "council_size": len(COUNCIL_MODELS),
+            "council_size": len(_get_council_models()),
             "responses_received": num_responses,
             "synthesis_mode": _get_synthesis_mode(),
             "rankings": [

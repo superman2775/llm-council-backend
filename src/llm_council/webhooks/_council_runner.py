@@ -47,6 +47,9 @@ async def run_council(
     """
     request_id = str(uuid.uuid4())
 
+    # Get the current event loop for thread-safe callback scheduling
+    loop = asyncio.get_running_loop()
+
     # Event queue for real-time event capture
     event_queue: asyncio.Queue = asyncio.Queue()
 
@@ -56,19 +59,30 @@ async def run_council(
     # Sentinel to signal end of events
     _DONE = object()
 
+    def _put_event(event_data: Dict[str, Any]) -> None:
+        """Thread-safe helper to put event to queue."""
+        event_queue.put_nowait(event_data)
+
     def on_event_callback(payload) -> None:
-        """Callback to capture events from EventBridge."""
+        """Callback to capture events from EventBridge.
+
+        Thread-safe: Uses call_soon_threadsafe if called from background thread.
+        """
         events_seen.add(payload.event)
-        # Convert WebhookPayload to SSE event format
-        event_queue.put_nowait(
-            {
-                "event": payload.event,
-                "data": {
-                    "request_id": request_id,
-                    **payload.data,
-                },
-            }
-        )
+        event_data = {
+            "event": payload.event,
+            "data": {
+                "request_id": request_id,
+                **payload.data,
+            },
+        }
+        # Use call_soon_threadsafe for thread safety (handles both same-thread
+        # and cross-thread calls safely)
+        try:
+            loop.call_soon_threadsafe(_put_event, event_data)
+        except RuntimeError:
+            # Loop is closed - we're shutting down, ignore
+            pass
 
     # Create webhook config for event subscription
     webhook_config = WebhookConfig(
@@ -118,8 +132,12 @@ async def run_council(
         except Exception as e:
             council_error = e
         finally:
-            # Signal that the council is done
-            event_queue.put_nowait(_DONE)
+            # Signal that the council is done (thread-safe)
+            try:
+                loop.call_soon_threadsafe(lambda: event_queue.put_nowait(_DONE))
+            except RuntimeError:
+                # Loop is closed - we're shutting down
+                pass
 
     # Track the task so we can cancel it on client disconnect
     council_task = None
@@ -205,8 +223,9 @@ async def run_council(
         if council_task is not None and not council_task.done():
             council_task.cancel()
             try:
-                await council_task
-            except asyncio.CancelledError:
+                # Use wait_for with timeout to prevent deadlock if task is stuck
+                await asyncio.wait_for(council_task, timeout=2.0)
+            except (asyncio.CancelledError, asyncio.TimeoutError):
                 pass
         raise  # Re-raise to properly close the generator
 

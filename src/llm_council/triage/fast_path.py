@@ -19,15 +19,16 @@ import re
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
-from llm_council.tier_contract import TierContract
+from typing import TYPE_CHECKING
+
 from llm_council.triage.complexity import (
     ComplexityLevel,
     classify_complexity_detailed,
 )
-from llm_council.layer_contracts import (
-    LayerEventType,
-    emit_layer_event,
-)
+
+# Type-only imports to avoid circular dependency
+if TYPE_CHECKING:
+    from llm_council.tier_contract import TierContract
 
 
 @dataclass
@@ -267,7 +268,7 @@ class FastPathRouter:
         # Simple and medium queries are eligible
         return True
 
-    def select_fast_path_model(self, tier_contract: Optional[TierContract] = None) -> str:
+    def select_fast_path_model(self, tier_contract: Optional["TierContract"] = None) -> str:
         """Select model for fast path.
 
         Args:
@@ -286,7 +287,7 @@ class FastPathRouter:
         # Default fast path models (fast/cheap)
         return "openai/gpt-4o-mini"
 
-    def get_timeout(self, tier_contract: Optional[TierContract] = None) -> float:
+    def get_timeout(self, tier_contract: Optional["TierContract"] = None) -> float:
         """Get timeout for fast path query.
 
         Args:
@@ -307,6 +308,9 @@ class FastPathRouter:
         result: "FastPathResult",
     ) -> None:
         """Emit L2_FAST_PATH_TRIGGERED event (ADR-024)."""
+        # Lazy import to avoid circular dependency
+        from llm_council.layer_contracts import LayerEventType, emit_layer_event
+
         # Get complexity for the query
         complexity_result = classify_complexity_detailed(query)
 
@@ -326,7 +330,7 @@ class FastPathRouter:
     async def route(
         self,
         query: str,
-        tier_contract: Optional[TierContract] = None,
+        tier_contract: Optional["TierContract"] = None,
     ) -> FastPathResult:
         """Route query through fast path.
 
@@ -403,7 +407,7 @@ class FastPathRouter:
         self,
         query: str,
         model: str,
-        tier_contract: Optional[TierContract] = None,
+        tier_contract: Optional["TierContract"] = None,
     ) -> Optional[Dict[str, Any]]:
         """Query a single model.
 

@@ -2,7 +2,7 @@ import asyncio
 import uuid
 import pytest
 from unittest.mock import MagicMock, AsyncMock, patch
-from llm_council.council import run_council_with_fallback, COUNCIL_MODELS
+from llm_council.council import run_council_with_fallback
 from llm_council.telemetry import TelemetryProtocol
 
 
