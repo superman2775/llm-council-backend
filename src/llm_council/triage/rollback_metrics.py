@@ -164,7 +164,17 @@ class RollbackMetricStore:
         self._load()
 
     def _load(self) -> None:
-        """Load metrics from persistent store with file locking."""
+        """Load metrics from persistent store with file locking.
+
+        On load error (corrupted file, permission issues), starts fresh with empty metrics.
+        This is the correct 'fail-safe' behavior for rollback monitoring:
+        - Empty metrics means no thresholds are breached
+        - Fast path remains enabled (the default optimistic state)
+        - If historical data suggests problems, we'd want to disable fast path
+        - Without that data, we have no evidence to disable it
+        """
+        import logging
+
         if not os.path.exists(self.store_path):
             return
 
@@ -187,8 +197,12 @@ class RollbackMetricStore:
             # Trim to window size
             for metric_type in self._metrics:
                 self._metrics[metric_type] = self._metrics[metric_type][-self.config.window_size :]
-        except (json.JSONDecodeError, IOError, ValueError):
-            # Start fresh on error
+        except (json.JSONDecodeError, IOError, ValueError) as e:
+            # Log the error for observability, then start fresh
+            logging.warning(
+                f"Failed to load rollback metrics from {self.store_path}: {e}. "
+                "Starting with empty metrics (fail-safe behavior)."
+            )
             self._metrics = defaultdict(list)
 
     def _save_record(self, record: MetricRecord) -> None:
