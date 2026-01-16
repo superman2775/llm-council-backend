@@ -78,6 +78,10 @@ class RollbackConfig:
             escalation_threshold=float(
                 os.environ.get("LLM_COUNCIL_ROLLBACK_ESCALATION_THRESHOLD", "0.15")
             ),
+            error_multiplier=float(os.environ.get("LLM_COUNCIL_ROLLBACK_ERROR_MULTIPLIER", "1.5")),
+            wildcard_timeout_threshold=float(
+                os.environ.get("LLM_COUNCIL_ROLLBACK_WILDCARD_TIMEOUT_THRESHOLD", "0.05")
+            ),
         )
 
 
@@ -213,53 +217,52 @@ class RollbackMetricStore:
     def _truncate_file(self) -> None:
         """Truncate file to keep only recent records (bounded storage).
 
-        Uses atomic file replacement to prevent race conditions:
-        1. Acquire exclusive lock on main file
-        2. Read all records while holding lock
-        3. Write to temp file
-        4. Atomic rename to replace main file
-        5. Release lock
+        Uses atomic file replacement for consistency:
+        1. Read all records from current file
+        2. Write truncated records to temp file
+        3. Atomic rename to replace main file
+
+        Note: File locking is NOT used for truncation because:
+        - The atomic rename (os.replace) guarantees readers see either
+          the old or new file, never partial data
+        - Holding a lock during rename is ineffective (lock is on old inode)
+        - This design accepts eventual consistency which is appropriate
+          for rollback metrics
         """
         import tempfile
 
         try:
-            # Open main file and acquire exclusive lock for entire operation
-            with open(self.store_path, "r+") as f:
-                if _HAS_FCNTL:
-                    fcntl.flock(f.fileno(), fcntl.LOCK_EX)
-                try:
-                    # Read all records while holding lock
-                    records = []
+            # Read all records from current file
+            records = []
+            if os.path.exists(self.store_path):
+                with open(self.store_path, "r") as f:
                     for line in f:
                         if line.strip():
                             records.append(line)
 
-                    # Keep only last window_size * 5 records (reasonable history)
-                    max_records = self.config.window_size * 5
-                    if len(records) > max_records:
-                        records = records[-max_records:]
+            # Keep only last window_size * 5 records (reasonable history)
+            max_records = self.config.window_size * 5
+            if len(records) > max_records:
+                records = records[-max_records:]
 
-                    # Write to temp file in same directory (for atomic rename)
-                    dir_path = os.path.dirname(self.store_path) or "."
-                    fd, temp_path = tempfile.mkstemp(dir=dir_path, suffix=".tmp")
-                    try:
-                        with os.fdopen(fd, "w") as temp_f:
-                            temp_f.writelines(records)
-                            temp_f.flush()
-                            os.fsync(temp_f.fileno())  # Ensure data is on disk
+            # Write to temp file in same directory (for atomic rename)
+            dir_path = os.path.dirname(self.store_path) or "."
+            fd, temp_path = tempfile.mkstemp(dir=dir_path, suffix=".tmp")
+            try:
+                with os.fdopen(fd, "w") as temp_f:
+                    temp_f.writelines(records)
+                    temp_f.flush()
+                    os.fsync(temp_f.fileno())  # Ensure data is on disk
 
-                        # Atomic rename (POSIX guarantees this is atomic)
-                        os.replace(temp_path, self.store_path)
-                    except Exception:
-                        # Clean up temp file on error
-                        try:
-                            os.unlink(temp_path)
-                        except OSError:
-                            pass
-                        raise
-                finally:
-                    if _HAS_FCNTL:
-                        fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+                # Atomic rename (POSIX guarantees this is atomic)
+                os.replace(temp_path, self.store_path)
+            except Exception:
+                # Clean up temp file on error
+                try:
+                    os.unlink(temp_path)
+                except OSError:
+                    pass
+                raise
         except IOError:
             pass  # Best effort truncation
 
@@ -270,6 +273,10 @@ class RollbackMetricStore:
             metric_type: Type of metric
             value: Metric value (typically 1.0 or 0.0)
         """
+        # Skip recording if disabled
+        if not self.config.enabled:
+            return
+
         record = MetricRecord(
             metric_type=metric_type.value,
             value=value,
@@ -334,8 +341,12 @@ class RollbackMonitor:
         """Check if any thresholds are breached.
 
         Returns:
-            True if any threshold is breached
+            True if any threshold is breached, False if disabled
         """
+        # Skip checks if monitoring is disabled
+        if not self.config.enabled:
+            return False
+
         self._breached = {}
 
         # Check shadow disagreement
