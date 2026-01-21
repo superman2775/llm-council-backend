@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.24.20] - 2026-01-21
+
+### Changed
+
+- **Default Council Model**: Replaced `openai/gpt-5.2-pro` with `openai/gpt-5.2` in all tier pools
+  - Reasoning tier now uses `gpt-5.2` instead of expensive `gpt-5.2-pro`
+  - Frontier tier now uses `gpt-5.2` instead of `gpt-5.2-pro`
+  - Default council models list updated
+  - Cost reduction while maintaining quality (both are frontier-tier models)
+
 ## [0.24.19] - 2026-01-16
 
 ### Fixed

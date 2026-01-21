@@ -1114,7 +1114,7 @@ This implements the "Sovereign Orchestrator" philosophy: the system must functio
 
 | Provider | Count | Examples |
 |----------|-------|----------|
-| OpenAI | 7 | gpt-4o, gpt-4o-mini, o1, o1-preview, o1-mini, o3-mini, gpt-5.2-pro |
+| OpenAI | 9 | gpt-4o, gpt-4o-mini, gpt-5.2, gpt-5-mini, o1, o1-preview, o1-mini, o3-mini |
 | Anthropic | 5 | claude-opus-4.5, claude-3-5-sonnet, claude-3-5-haiku |
 | Google | 5 | gemini-3-pro, gemini-2.5-pro, gemini-2.0-flash, gemini-1.5-pro |
 | xAI | 2 | grok-4, grok-4.1-fast |
@@ -1232,7 +1232,7 @@ For detailed documentation, see the [Skills Guide](https://llm-council.dev/guide
 | `LLM_COUNCIL_MODELS_QUICK` | Models for quick tier (ADR-022) | gpt-4o-mini, haiku, gemini-flash |
 | `LLM_COUNCIL_MODELS_BALANCED` | Models for balanced tier (ADR-022) | gpt-4o, sonnet, gemini-pro |
 | `LLM_COUNCIL_MODELS_HIGH` | Models for high tier (ADR-022) | gpt-4o, opus, gemini-3-pro, grok-4 |
-| `LLM_COUNCIL_MODELS_REASONING` | Models for reasoning tier (ADR-022) | gpt-5.2-pro, opus, o1-preview, deepseek-r1 |
+| `LLM_COUNCIL_MODELS_REASONING` | Models for reasoning tier (ADR-022) | gpt-5.2, opus, o1-preview, deepseek-r1 |
 | `LLM_COUNCIL_WILDCARD_ENABLED` | Enable wildcard specialist selection (ADR-020) | false |
 | `LLM_COUNCIL_PROMPT_OPTIMIZATION_ENABLED` | Enable per-model prompt optimization (ADR-020) | false |
 | `LLM_COUNCIL_FAST_PATH_ENABLED` | Enable confidence-gated fast path (ADR-020) | false |

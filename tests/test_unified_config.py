@@ -1435,7 +1435,7 @@ class TestCouncilConfig:
         config = CouncilConfig()
 
         # Defaults from config.py
-        assert "openai/gpt-5.2-pro" in config.models
+        assert "openai/gpt-5.2" in config.models
         assert config.chairman == "google/gemini-3-pro-preview"
         assert config.synthesis_mode == "consensus"
         assert config.exclude_self_votes is True
