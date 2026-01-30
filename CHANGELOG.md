@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.24.21] - 2026-01-30
+
+### Security
+
+- **CRITICAL: Remove API key exposure in health check** (CVE pending)
+  - Removed `key_preview` field that exposed first 20 characters of API key
+  - Removed `working_directory` debug field from health check response
+  - Health check result is returned to MCP clients (LLMs), so partial keys were being sent to models
+  - **Action required**: Users should rotate their OpenRouter API keys if they used `council_health_check()`
+
 ## [0.24.20] - 2026-01-21
 
 ### Changed
