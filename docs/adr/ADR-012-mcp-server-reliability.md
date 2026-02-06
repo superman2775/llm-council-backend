@@ -248,7 +248,7 @@ async def consult_council(
 
 **Progress Feedback**: During model queries, progress updates show which models have responded:
 ```
-✓ claude-opus-4.5 (1/4) | waiting: gpt-5.1, gemini-3-pro, grok-4
+✓ claude-opus-4.6 (1/4) | waiting: gpt-5.1, gemini-3-pro, grok-4
 ✓ gemini-3-pro (2/4) | waiting: gpt-5.1, grok-4
 ```
 

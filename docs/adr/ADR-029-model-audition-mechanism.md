@@ -4,7 +4,7 @@
 **Date:** 2025-12-24
 **Decision Makers:** Engineering, Architecture
 **Depends On:** ADR-028 (Dynamic Candidate Discovery), ADR-027 (Frontier Tier)
-**Council Review:** Reasoning tier (gpt-5.2-pro, claude-opus-4.5, gemini-3-pro-preview, grok-4.1-fast)
+**Council Review:** Reasoning tier (gpt-5.2-pro, claude-opus-4.6, gemini-3-pro-preview, grok-4.1-fast)
 
 ---
 

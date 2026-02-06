@@ -76,7 +76,7 @@ class TestStaticRegistryGetModelInfo:
         from llm_council.metadata.static_registry import StaticRegistryProvider
 
         provider = StaticRegistryProvider()
-        info = provider.get_model_info("anthropic/claude-opus-4.5")
+        info = provider.get_model_info("anthropic/claude-opus-4.6")
 
         assert info is not None
         assert info.pricing is not None

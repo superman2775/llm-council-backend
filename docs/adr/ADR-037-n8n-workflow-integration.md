@@ -646,7 +646,7 @@ Provide:
 
 **Review Date:** 2025-12-30
 **Tier:** High (4 models)
-**Models:** grok-4.1-fast, gemini-3-pro-preview, gpt-5.2, claude-opus-4.5
+**Models:** grok-4.1-fast, gemini-3-pro-preview, gpt-5.2, claude-opus-4.6
 
 ### Key Feedback Incorporated
 

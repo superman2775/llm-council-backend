@@ -340,7 +340,7 @@ We never store raw queries. Bias records contain:
   "schema_version": "1.1.0",
   "session_id": "uuid",
   "reviewer_id": "google/gemini-3-pro",
-  "model_id": "anthropic/claude-opus-4.5",
+  "model_id": "anthropic/claude-opus-4.6",
   "position": 2,
   "response_length_chars": 1200,
   "score_value": 8.5,

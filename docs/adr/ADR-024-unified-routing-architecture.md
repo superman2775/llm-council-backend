@@ -289,7 +289,7 @@ council:
       high:
         models:
           - openai/gpt-4o
-          - anthropic/claude-opus-4-5-20250514
+          - anthropic/claude-opus-4-6
           - google/gemini-3-pro
           - x-ai/grok-4
         timeout_seconds: 180
@@ -298,7 +298,7 @@ council:
       reasoning:
         models:
           - openai/gpt-5.2-pro
-          - anthropic/claude-opus-4-5-20250514
+          - anthropic/claude-opus-4-6
           - openai/o1-preview
           - deepseek/deepseek-r1
         timeout_seconds: 600

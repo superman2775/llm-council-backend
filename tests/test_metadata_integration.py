@@ -78,7 +78,7 @@ class TestBundledRegistryContent:
 
         anthropic_models = [m for m in models if m.startswith("anthropic/")]
         assert len(anthropic_models) >= 4
-        assert "anthropic/claude-opus-4.5" in models
+        assert "anthropic/claude-opus-4.6" in models
 
     def test_registry_has_google_models(self):
         """Registry should include Google models."""
@@ -188,10 +188,10 @@ class TestModelInfoContent:
 
         reload_provider()
         provider = get_provider()
-        info = provider.get_model_info("anthropic/claude-opus-4.5")
+        info = provider.get_model_info("anthropic/claude-opus-4.6")
 
         assert info is not None
-        assert info.id == "anthropic/claude-opus-4.5"
+        assert info.id == "anthropic/claude-opus-4.6"
         assert info.context_window == 200000
         assert "vision" in info.modalities
         assert info.quality_tier == QualityTier.FRONTIER
@@ -272,7 +272,7 @@ class TestDynamicProviderIntegration:
 
         # Should include static registry models
         assert "openai/gpt-4o" in models
-        assert "anthropic/claude-opus-4.5" in models
+        assert "anthropic/claude-opus-4.6" in models
 
 
 class TestTierSelectionIntegration:

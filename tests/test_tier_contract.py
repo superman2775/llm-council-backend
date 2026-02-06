@@ -22,7 +22,7 @@ class TestTierContractStructure:
             max_attempts=3,
             requires_peer_review=True,
             requires_verifier=False,
-            allowed_models=["openai/gpt-4o", "anthropic/claude-opus-4-5-20250514"],
+            allowed_models=["openai/gpt-4o", "anthropic/claude-opus-4-6"],
             aggregator_model="openai/gpt-4o",
             override_policy={"can_escalate": True, "can_deescalate": False},
         )

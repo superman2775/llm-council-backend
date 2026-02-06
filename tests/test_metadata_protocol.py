@@ -136,7 +136,7 @@ class TestMockProviderCompliance:
                 return model_id.startswith("openai/o")
 
             def list_available_models(self) -> List[str]:
-                return ["openai/gpt-4o", "anthropic/claude-opus-4.5"]
+                return ["openai/gpt-4o", "anthropic/claude-opus-4.6"]
 
         provider = TypedProvider()
 

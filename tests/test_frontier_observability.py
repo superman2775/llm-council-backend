@@ -97,7 +97,7 @@ class TestFrontierEventEmission:
             LayerEventType.FRONTIER_SHADOW_VOTE,
             {
                 "model_id": "openai/gpt-5.2-pro",
-                "top_pick": "anthropic/claude-opus-4.5",
+                "top_pick": "anthropic/claude-opus-4.6",
                 "agreed_with_consensus": True,
             },
         )

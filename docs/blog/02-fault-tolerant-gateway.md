@@ -79,7 +79,7 @@ models:
       completion: 0.01
     quality_tier: "frontier"
 
-  - id: "anthropic/claude-opus-4.5"
+  - id: "anthropic/claude-opus-4.6"
     context_window: 200000
     pricing:
       prompt: 0.015

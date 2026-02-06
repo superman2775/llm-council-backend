@@ -181,7 +181,7 @@ council:
 |-------|-------------|
 | openai/gpt-5.2-pro | 0.833 |
 | google/gemini-3-pro-preview | 0.5 |
-| anthropic/claude-opus-4.5 | 0.333 |
+| anthropic/claude-opus-4.6 | 0.333 |
 | x-ai/grok-4.1-fast | 0.111 |
 
 ## Consequences

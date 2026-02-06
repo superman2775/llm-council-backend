@@ -116,13 +116,13 @@ TIER_MODEL_POOLS = {
     ],
     "high": [
         "openai/gpt-4o",
-        "anthropic/claude-opus-4-5-20250514",
+        "anthropic/claude-opus-4-6",
         "google/gemini-3-pro",
         "x-ai/grok-4",
     ],
     "reasoning": [
         "openai/gpt-5.2-pro",
-        "anthropic/claude-opus-4-5-20250514",
+        "anthropic/claude-opus-4-6",
         "openai/o1-preview",
         "deepseek/deepseek-r1",
     ],
@@ -237,8 +237,8 @@ async def route_query(query: str, confidence: str = "auto") -> Response:
 # Per-tier model pools (comma-separated)
 LLM_COUNCIL_MODELS_QUICK="openai/gpt-4o-mini,anthropic/claude-3-5-haiku-20241022"
 LLM_COUNCIL_MODELS_BALANCED="openai/gpt-4o,anthropic/claude-3-5-sonnet-20241022"
-LLM_COUNCIL_MODELS_HIGH="openai/gpt-4o,anthropic/claude-opus-4-5-20250514,google/gemini-3-pro"
-LLM_COUNCIL_MODELS_REASONING="openai/gpt-5.2-pro,anthropic/claude-opus-4-5-20250514,openai/o1-preview"
+LLM_COUNCIL_MODELS_HIGH="openai/gpt-4o,anthropic/claude-opus-4-6,google/gemini-3-pro"
+LLM_COUNCIL_MODELS_REASONING="openai/gpt-5.2-pro,anthropic/claude-opus-4-6,openai/o1-preview"
 
 # Auto-tier selection (requires Not Diamond, ADR-020)
 LLM_COUNCIL_AUTO_TIER=true|false  # default: false
@@ -318,7 +318,7 @@ Reasoning models (o1) have known failure modes: overthinking, getting lost in re
 ```python
 REASONING_TIER_COMPOSITION = {
     "primary_reasoning": ["o1", "gpt-5.2-pro", "deepseek-r1"],
-    "complementary_non_reasoning": ["claude-opus-4.5"],
+    "complementary_non_reasoning": ["claude-opus-4.6"],
     "minimum_reasoning_ratio": 0.6,  # At least 60% reasoning models
     "required_non_reasoning": 1,      # At least 1 for perspective
 }

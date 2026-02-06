@@ -197,7 +197,7 @@ class TierConfig(BaseModel):
             "high": TierPoolConfig(
                 models=[
                     "openai/gpt-5.2",
-                    "anthropic/claude-opus-4.5",
+                    "anthropic/claude-opus-4.6",
                     "google/gemini-3-pro-preview",
                     "x-ai/grok-4.1-fast",
                 ],
@@ -206,7 +206,7 @@ class TierConfig(BaseModel):
             "reasoning": TierPoolConfig(
                 models=[
                     "openai/gpt-5.2",
-                    "anthropic/claude-opus-4.5",
+                    "anthropic/claude-opus-4.6",
                     "google/gemini-3-pro-preview",
                     "x-ai/grok-4.1-fast",
                 ],
@@ -216,7 +216,7 @@ class TierConfig(BaseModel):
             "frontier": TierPoolConfig(
                 models=[
                     "openai/gpt-5.2",
-                    "anthropic/claude-opus-4.5",
+                    "anthropic/claude-opus-4.6",
                     "google/gemini-3-pro-preview",
                     "x-ai/grok-4.1-fast",
                 ],
@@ -721,7 +721,7 @@ class CouncilConfig(BaseModel):
         default_factory=lambda: [
             "openai/gpt-5.2",
             "google/gemini-3-pro-preview",
-            "anthropic/claude-opus-4.5",
+            "anthropic/claude-opus-4.6",
             "x-ai/grok-4",
         ],
         alias="LLM_COUNCIL_MODELS",

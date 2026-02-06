@@ -152,7 +152,7 @@ async def stage1_with_optimization(query: str) -> List[Response]:
 COUNCIL_MODELS = [
     "openai/gpt-5.2-pro",       # Anchor
     "google/gemini-3-pro",       # Anchor
-    "anthropic/claude-opus-4.5", # Anchor
+    "anthropic/claude-opus-4.6", # Anchor
     "dynamic:not-diamond",       # Wildcard - selected per query
 ]
 ```

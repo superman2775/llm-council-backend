@@ -54,7 +54,7 @@ The blocking conditions were implemented using TDD (Test-Driven Development) wit
 
 31 models from 8 providers:
 - OpenAI (7): gpt-4o, gpt-4o-mini, gpt-5.2-pro, o1, o1-preview, o1-mini, o3-mini
-- Anthropic (5): claude-opus-4.5, claude-3-5-sonnet, claude-3-5-haiku, claude-3-opus, claude-3-sonnet
+- Anthropic (5): claude-opus-4.6, claude-3-5-sonnet, claude-3-5-haiku, claude-3-opus, claude-3-sonnet
 - Google (5): gemini-3-pro-preview, gemini-2.5-pro, gemini-2.0-flash, gemini-1.5-pro, gemini-1.5-flash
 - xAI (2): grok-4, grok-4.1-fast
 - DeepSeek (2): deepseek-r1, deepseek-chat
@@ -158,7 +158,7 @@ models:
     modalities: ["text", "vision"]
     quality_tier: "frontier"
 
-  - id: "anthropic/claude-opus-4.5"
+  - id: "anthropic/claude-opus-4.6"
     context_window: 200000
     pricing:
       prompt: 0.015
@@ -331,7 +331,7 @@ Provides real-time model metadata:
 
 ```json
 {
-  "id": "anthropic/claude-opus-4-5-20250514",
+  "id": "anthropic/claude-opus-4-6",
   "name": "Claude Opus 4.5",
   "pricing": {
     "prompt": "0.000015",

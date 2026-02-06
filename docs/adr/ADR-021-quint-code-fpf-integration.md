@@ -485,7 +485,7 @@ design_rationale_record:
   timestamp: "2025-12-19T14:32:00Z"
 
   contributions:
-    - model: "claude-opus-4.5"
+    - model: "claude-opus-4.6"
       role: "primary_synthesis"
       claims: ["hypothesis_A", "constraint_check_passed"]
       confidence: 0.82

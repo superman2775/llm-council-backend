@@ -128,13 +128,13 @@ TIER_POOLS = {
     ],
     "high": [
         "openai/gpt-4o",              # ~4s, $2.50/1M tokens
-        "anthropic/claude-opus-4.5",  # ~10s, $15/1M tokens
+        "anthropic/claude-opus-4.6",  # ~10s, $15/1M tokens
         "google/gemini-3-pro",        # ~8s, $1.25/1M tokens
         "x-ai/grok-4",                # ~6s, $3.00/1M tokens
     ],
     "reasoning": [
         "openai/o1",                  # ~60s, $15/1M tokens
-        "anthropic/claude-opus-4.5",  # ~10s, $15/1M tokens
+        "anthropic/claude-opus-4.6",  # ~10s, $15/1M tokens
         "deepseek/deepseek-r1",       # ~30s, $0.55/1M tokens
     ],
 }

@@ -116,7 +116,7 @@ class TestDynamicProviderFallback:
         # These are in static registry
         models = provider.list_available_models()
         assert "openai/gpt-4o" in models
-        assert "anthropic/claude-opus-4.5" in models
+        assert "anthropic/claude-opus-4.6" in models
 
 
 class TestDynamicProviderRefresh:

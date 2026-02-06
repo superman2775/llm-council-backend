@@ -477,5 +477,5 @@ services:
 ### Models Contributing
 - `x-ai/grok-4.1-fast` - Approved with minor revisions
 - `google/gemini-3-pro-preview` - Approved with modifications (security)
-- `anthropic/claude-opus-4.5` - Approved with revisions
+- `anthropic/claude-opus-4.6` - Approved with revisions
 - `openai/gpt-5.2` - Conditional approval (security controls required)

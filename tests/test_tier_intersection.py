@@ -88,7 +88,7 @@ class TestResolveTierIntersection:
         from llm_council.metadata.types import ModelInfo, QualityTier
 
         stable_frontier = ModelInfo(
-            id="anthropic/claude-opus-4.5",
+            id="anthropic/claude-opus-4.6",
             context_window=200000,
             quality_tier=QualityTier.FRONTIER,
             is_preview=False,

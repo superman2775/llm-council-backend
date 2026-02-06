@@ -30,7 +30,7 @@ council:
       high:
         models:
           - openai/gpt-4o
-          - anthropic/claude-opus-4-5-20250514
+          - anthropic/claude-opus-4-6
           - google/gemini-3-pro
         timeout_seconds: 180
 

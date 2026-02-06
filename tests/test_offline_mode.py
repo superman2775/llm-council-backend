@@ -108,7 +108,7 @@ class TestOfflineModeCoreOperations:
             # All tier models should be available
             models = provider.list_available_models()
             assert "openai/gpt-4o" in models
-            assert "anthropic/claude-opus-4.5" in models
+            assert "anthropic/claude-opus-4.6" in models
             assert len(models) >= 30
 
     def test_context_window_available_offline(self):

@@ -6,7 +6,7 @@
 **Depends On:** ADR-033 (OSS Community Infrastructure)
 **Author:** @amiable-dev
 **Council Review v1:** 2025-12-28 (Reasoning Tier: openai/o1, google/gemini-3-pro-preview)
-**Council Review v2:** 2025-12-28 (High Tier: gpt-5.2, claude-opus-4.5, gemini-3-pro-preview, grok-4.1-fast)
+**Council Review v2:** 2025-12-28 (High Tier: gpt-5.2, claude-opus-4.6, gemini-3-pro-preview, grok-4.1-fast)
 
 ## Context
 
@@ -784,7 +784,7 @@ Use fully open source ZAP instead of StackHawk.
 
 ## Council Review Summary (v2)
 
-The ADR was reviewed by the LLM Council using high tier (gpt-5.2, claude-opus-4.5, gemini-3-pro-preview, grok-4.1-fast) on 2025-12-28.
+The ADR was reviewed by the LLM Council using high tier (gpt-5.2, claude-opus-4.6, gemini-3-pro-preview, grok-4.1-fast) on 2025-12-28.
 
 ### Executive Summary
 

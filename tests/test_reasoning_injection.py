@@ -186,7 +186,7 @@ class TestOpenRouterPayloadInjection:
 
         params = ReasoningParams(effort="high", max_tokens=32000)
         payload = build_openrouter_payload(
-            model="anthropic/claude-opus-4.5",
+            model="anthropic/claude-opus-4.6",
             messages=[{"role": "user", "content": "test"}],
             reasoning_params=params,
         )

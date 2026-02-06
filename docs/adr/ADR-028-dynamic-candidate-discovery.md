@@ -5,7 +5,7 @@
 **Decision Makers:** Engineering, Architecture
 **Extends:** ADR-026 (Dynamic Model Intelligence)
 **Implements:** GitHub Issue #109
-**Council Review:** Reasoning tier (gpt-5.2-pro, claude-opus-4.5, gemini-3-pro-preview, grok-4.1-fast)
+**Council Review:** Reasoning tier (gpt-5.2-pro, claude-opus-4.6, gemini-3-pro-preview, grok-4.1-fast)
 
 ---
 

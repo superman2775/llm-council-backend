@@ -27,7 +27,7 @@ class TestModelInfo:
         from llm_council.metadata.types import ModelInfo
 
         info = ModelInfo(
-            id="anthropic/claude-opus-4.5",
+            id="anthropic/claude-opus-4.6",
             context_window=200000,
             pricing={"prompt": 0.015, "completion": 0.075},
         )

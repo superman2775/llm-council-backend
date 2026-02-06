@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.24.22] - 2026-02-06
+
+### Changed
+
+- **Model Upgrade**: Replaced `anthropic/claude-opus-4.5` with `anthropic/claude-opus-4.6` across all configurations
+  - Updated tier pools (high, reasoning, frontier) in `unified_config.py`
+  - Updated tier aggregators in `tier_contract.py`
+  - Updated model registry (`registry.yaml`)
+  - Updated `llm_council.yaml` user-facing config
+  - Updated all documentation (README, ADRs, blog posts, getting-started guide)
+  - Closes #323
+
 ## [0.24.21] - 2026-01-30
 
 ### Security

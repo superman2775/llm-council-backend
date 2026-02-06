@@ -435,9 +435,9 @@ class AnthropicTransformer:
 
 ```python
 MODEL_ID_MAP = {
-    "claude-opus-4.5": {
-        "openrouter": "anthropic/claude-opus-4-5-20250514",
-        "requesty": "anthropic/claude-opus-4.5",
+    "claude-opus-4.6": {
+        "openrouter": "anthropic/claude-opus-4-6",
+        "requesty": "anthropic/claude-opus-4.6",
         "direct": "claude-3-opus-20240229",  # Anthropic native
     }
 }

@@ -93,7 +93,7 @@ The proposal is effectively **two projects**:
   "session_id": "uuid",
   "timestamp": "2025-12-17T10:30:00Z",
   "reviewer_id": "google/gemini-3-pro-preview",
-  "model_id": "anthropic/claude-opus-4.5",
+  "model_id": "anthropic/claude-opus-4.6",
   "position": 2,
   "response_length_chars": 1200,
   "score_value": 8.5,
@@ -379,7 +379,7 @@ The council evaluated alignment between ADR-018 (bias aggregation) and council-c
   },
 
   "reviewer_id": "google/gemini-3-pro-preview",
-  "model_id": "anthropic/claude-opus-4.5",
+  "model_id": "anthropic/claude-opus-4.6",
   "position": 2,
   "response_length_chars": 1200,
   "score_value": 8.5,

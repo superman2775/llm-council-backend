@@ -84,7 +84,7 @@ _DEFAULT_TIER_MODEL_POOLS = {
         "x-ai/grok-3",
     ],
     "reasoning": ["openai/o1", "openai/o3-mini", "deepseek/deepseek-r1"],
-    "frontier": ["openai/o3", "anthropic/claude-opus-4-5-20250514"],
+    "frontier": ["openai/o3", "anthropic/claude-opus-4-6"],
 }
 
 
@@ -102,8 +102,8 @@ TIER_AGGREGATORS: Dict[str, str] = {
     "quick": "openai/gpt-4o-mini",  # Speed-matched
     "balanced": "openai/gpt-4o",  # Quality-matched
     "high": "openai/gpt-4o",  # Full capability
-    "reasoning": "anthropic/claude-opus-4-5-20250514",  # Can understand o1 outputs
-    "frontier": "anthropic/claude-opus-4.5",  # Best available for cutting-edge synthesis (ADR-027)
+    "reasoning": "anthropic/claude-opus-4-6",  # Can understand o1 outputs
+    "frontier": "anthropic/claude-opus-4.6",  # Best available for cutting-edge synthesis (ADR-027)
 }
 
 

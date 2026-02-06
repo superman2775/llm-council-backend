@@ -71,7 +71,7 @@ class TestBiasMetricRecord:
             timestamp="2025-12-17T10:30:00Z",
             consent_level=2,
             reviewer_id="google/gemini-3-pro-preview",
-            model_id="anthropic/claude-opus-4.5",
+            model_id="anthropic/claude-opus-4.6",
             position=2,
             response_length_chars=1200,
             score_value=8.5,
@@ -83,7 +83,7 @@ class TestBiasMetricRecord:
 
         assert record.session_id == "sess-abc-123"
         assert record.reviewer_id == "google/gemini-3-pro-preview"
-        assert record.model_id == "anthropic/claude-opus-4.5"
+        assert record.model_id == "anthropic/claude-opus-4.6"
         assert record.position == 2
         assert record.response_length_chars == 1200
         assert record.score_value == 8.5

@@ -109,7 +109,7 @@ class CouncilConfig(BaseModel):
         default_factory=lambda: [
             "openai/gpt-5.2-pro",
             "google/gemini-3-pro-preview",
-            "anthropic/claude-opus-4.5",
+            "anthropic/claude-opus-4.6",
             "x-ai/grok-4",
         ],
         validation_alias="LLM_COUNCIL_MODELS",
@@ -179,7 +179,7 @@ class TierPoolsConfig(BaseModel):
     high: list[str] = Field(
         default_factory=lambda: [
             "openai/gpt-4o",
-            "anthropic/claude-opus-4.5",
+            "anthropic/claude-opus-4.6",
             "google/gemini-3-pro-preview",
             "x-ai/grok-4",
         ],
@@ -189,7 +189,7 @@ class TierPoolsConfig(BaseModel):
     reasoning: list[str] = Field(
         default_factory=lambda: [
             "openai/gpt-5.2-pro",
-            "anthropic/claude-opus-4.5",
+            "anthropic/claude-opus-4.6",
             "google/gemini-3-pro-preview",
             "x-ai/grok-4.1-fast",
         ],
@@ -199,7 +199,7 @@ class TierPoolsConfig(BaseModel):
     frontier: list[str] = Field(
         default_factory=lambda: [
             "openai/gpt-5.2-pro",
-            "anthropic/claude-opus-4.5",
+            "anthropic/claude-opus-4.6",
             "google/gemini-3-pro-preview",
             "x-ai/grok-4",
             "deepseek/deepseek-r1",
@@ -342,7 +342,7 @@ council:
   models:
     - openai/gpt-5.2-pro
     - google/gemini-3-pro-preview
-    - anthropic/claude-opus-4.5
+    - anthropic/claude-opus-4.6
     - x-ai/grok-4
   chairman: google/gemini-3-pro-preview
   synthesis_mode: consensus
@@ -362,17 +362,17 @@ tier_pools:
     - google/gemini-2.5-pro-preview
   high:
     - openai/gpt-4o
-    - anthropic/claude-opus-4.5
+    - anthropic/claude-opus-4.6
     - google/gemini-3-pro-preview
     - x-ai/grok-4
   reasoning:
     - openai/gpt-5.2-pro
-    - anthropic/claude-opus-4.5
+    - anthropic/claude-opus-4.6
     - google/gemini-3-pro-preview
     - x-ai/grok-4.1-fast
   frontier:
     - openai/gpt-5.2-pro
-    - anthropic/claude-opus-4.5
+    - anthropic/claude-opus-4.6
     - google/gemini-3-pro-preview
     - deepseek/deepseek-r1
 

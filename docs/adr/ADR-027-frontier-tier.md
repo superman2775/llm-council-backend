@@ -4,7 +4,7 @@
 **Date:** 2025-12-24
 **Decision Makers:** Engineering, Architecture
 **Extends:** ADR-022 (Tier System)
-**Council Review:** Reasoning tier (gpt-5.2-pro, claude-opus-4.5, gemini-3-pro-preview, grok-4.1-fast)
+**Council Review:** Reasoning tier (gpt-5.2-pro, claude-opus-4.6, gemini-3-pro-preview, grok-4.1-fast)
 
 ---
 
@@ -226,7 +226,7 @@ DEFAULT_TIER_MODEL_POOLS = {
     # ... existing tiers ...
     "frontier": [
         "openai/gpt-5.2-pro",
-        "anthropic/claude-opus-4.5",
+        "anthropic/claude-opus-4.6",
         "google/gemini-3-pro-preview",
         "x-ai/grok-4",
         "deepseek/deepseek-r1",
@@ -243,7 +243,7 @@ council:
       frontier:
         models:
           - openai/gpt-5.2-pro
-          - anthropic/claude-opus-4.5
+          - anthropic/claude-opus-4.6
           - google/gemini-3-pro-preview
         timeout_seconds: 300
         allow_preview: true

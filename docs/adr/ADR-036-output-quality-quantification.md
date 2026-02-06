@@ -209,7 +209,7 @@ calibration_report:
   confidence_level: "high"  # Per ADR-018 thresholds
   
   models:
-    "anthropic/claude-opus-4.5":
+    "anthropic/claude-opus-4.6":
       mean_score_given: 7.2
       mean_score_received: 7.8
       calibration_delta: -0.6  # Tends to score harshly
@@ -222,7 +222,7 @@ calibration_report:
       self_preference_rate: 0.08
       
   recommendations:
-    - "claude-opus-4.5 scores 0.6 points below median; consider calibration weight"
+    - "claude-opus-4.6 scores 0.6 points below median; consider calibration weight"
     - "Cross-session length bias: r=0.42 (moderate positive correlation)"
 ```
 
@@ -486,7 +486,7 @@ All council responses include a `quality_metrics` object:
   "stage3_response": "The synthesized answer...",
   "metadata": {
     "duration_ms": 4523,
-    "models_participated": ["claude-opus-4.5", "gpt-4o", "gemini-3-pro"],
+    "models_participated": ["claude-opus-4.6", "gpt-4o", "gemini-3-pro"],
     
     "quality_metrics": {
       "tier": "standard",  // "core" | "standard" | "enterprise"
@@ -503,7 +503,7 @@ All council responses include a `quality_metrics` object:
       
       "standard": {  // Paid tier only
         "rubric_breakdown": { ... },
-        "calibration_notes": ["claude-opus-4.5 scored 0.5 below peer average"]
+        "calibration_notes": ["claude-opus-4.6 scored 0.5 below peer average"]
       },
       
       "enterprise": {  // Enterprise tier only
@@ -688,7 +688,7 @@ async def consult_council(
 ║ Weighted Composite    ║   7.82   ║ Above baseline (+0.3)         ║
 ╠═══════════════════════╩══════════╩═══════════════════════════════╣
 ║ CALIBRATION NOTES                                                 ║
-║ • claude-opus-4.5 scored 0.4 below peer average (harsh reviewer)  ║
+║ • claude-opus-4.6 scored 0.4 below peer average (harsh reviewer)  ║
 ║ • No position bias detected (variance: 0.12)                      ║
 ║ • Length correlation: r=0.18 (acceptable)                         ║
 ╠══════════════════════════════════════════════════════════════════╣
