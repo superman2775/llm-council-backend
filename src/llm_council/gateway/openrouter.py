@@ -238,6 +238,13 @@ class OpenRouterGateway(BaseRouter):
                         "error": f"Authentication failed for {model}: {response.status_code}",
                     }
 
+                if response.status_code == 400:
+                    return {
+                        "status": "error",
+                        "latency_ms": latency_ms,
+                        "error": f"Bad request for {model}: {response.text[:200]}",
+                    }
+
                 response.raise_for_status()
 
                 data = response.json()

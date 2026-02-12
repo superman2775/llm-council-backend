@@ -126,6 +126,13 @@ async def query_model_with_status(
                     "error": f"Authentication failed for {model}: {response.status_code}",
                 }
 
+            if response.status_code == 400:
+                return {
+                    "status": STATUS_ERROR,
+                    "latency_ms": latency_ms,
+                    "error": f"Bad request for {model}: {response.text[:200]}",
+                }
+
             response.raise_for_status()
 
             data = response.json()

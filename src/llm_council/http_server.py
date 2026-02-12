@@ -218,6 +218,13 @@ async def council_run(request: CouncilRequest) -> CouncilResponse:
             stage3=stage3,
             metadata=metadata,
         )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Council deliberation failed: {e}",
+        )
     finally:
         # Clear request-scoped API keys (cleanup for this async context)
         clear_request_api_keys()

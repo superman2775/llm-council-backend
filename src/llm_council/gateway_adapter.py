@@ -298,15 +298,23 @@ async def query_models_with_progress(
         async def query_with_tracking(model: str):
             nonlocal completed
 
-            request = GatewayRequest(
-                model=model,
-                messages=canonical_messages,
-                timeout=timeout,
-            )
+            try:
+                request = GatewayRequest(
+                    model=model,
+                    messages=canonical_messages,
+                    timeout=timeout,
+                )
 
-            router = _get_gateway_router()
-            response = await router.complete(request)
-            result = _gateway_response_to_dict(response)
+                router = _get_gateway_router()
+                response = await router.complete(request)
+                result = _gateway_response_to_dict(response)
+            except Exception as e:
+                result = {
+                    "status": STATUS_ERROR,
+                    "content": None,
+                    "latency_ms": 0,
+                    "error": str(e),
+                }
 
             results[model] = result
             completed += 1
