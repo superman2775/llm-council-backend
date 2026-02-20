@@ -17,7 +17,7 @@ import httpx
 from llm_council.unified_config import get_api_key
 
 # Default constants
-OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
+OPENROUTER_API_URL = "https://ai.hackclub.com/proxy/v1/chat/completions"
 
 
 def _get_openrouter_api_key() -> str:
